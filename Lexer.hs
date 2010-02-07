@@ -1,12 +1,11 @@
 {-# LANGUAGE MultiParamTypeClasses, TypeSynonymInstances, FlexibleInstances, FunctionalDependencies  #-}
 module Lexer where
 import ParserCore
+import Control.Applicative
 import Data.Char
 
 data Symbol
   = Id String
-  | Num String
-  | Op String 
   | LParen | RParen
   | UScore
   | Arrow
@@ -15,6 +14,7 @@ data Symbol
   | LComment | RComment
   | LBrace | RBrace
   | Endl
+  | Spc
   deriving (Show, Eq)
 
 class Lex l s | l -> s where
@@ -28,7 +28,8 @@ instance Lex String Char where
 instance Lex [String] Char where
   ss --> sym = oneOf $ map (--> sym) ss
 
-lexer = many . oneOf $
+lexer :: Parser Char [Symbol]
+lexer = some . oneOf $
   [ "("    --> LParen
   , ")"    --> RParen
   , "_"    --> UScore
@@ -40,6 +41,8 @@ lexer = many . oneOf $
   , "{"    --> LBrace
   , "}"    --> RBrace
   , "\n"   --> Endl
+  , mmunch isSpace >> return Spc
+  , Id <$> mmunch (not . isSpace)
   ]
 
 -------------------------------------------------------------------------------
@@ -59,10 +62,13 @@ munch r = do s <- look; inspect s
     inspect (c:cs) | r c = do symbol; cs' <- inspect cs; return (c:cs')
     inspect _ = return []
 
-many :: Parser s a -> Parser s [a]
-many p = do a <- p; return [a]
-  <|> 
-    do a <- p; as <- many p; return (a : as) 
+mmunch :: (s -> Bool) -> Parser s [s]
+mmunch pred = do
+  s <- symbol
+  if pred s then do
+    ss <- munch pred
+    return $ s : ss
+   else pfail
 
 oneOf :: [Parser s a] -> Parser s a
 oneOf = foldl1 (<|>)

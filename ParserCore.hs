@@ -9,8 +9,9 @@ module ParserCore
   , (<|>)
   ) where
 
-import Data.Char
+import Control.Applicative
 import Control.Monad
+import Data.Char
 
 -------------------------------------------------------------------------------
 
@@ -52,10 +53,6 @@ pfail = mzero
 look :: Parser s [s]
 look = Parser $ \k -> LookBind k
 
-infixr 5 <|>
-(<|>) :: Parser s b -> Parser s b -> Parser s b
-(<|>) = mplus
-
 instance Monad (Parser s) where
   return x = Parser $ \k -> k x
   Parser p >>= f = Parser $ \k -> p $ \x -> unParser (f x) k
@@ -63,6 +60,17 @@ instance Monad (Parser s) where
 instance MonadPlus (Parser s) where
   mzero = Parser $ \k -> Fail
   Parser p `mplus` Parser q = Parser $ \k -> p k <||> q k
+
+instance Functor (Parser s) where
+  fmap f p = p >>= (return . f)
+
+instance Applicative (Parser s) where
+  pure  = return
+  (<*>) = ap
+
+instance Alternative (Parser s) where
+  empty = mzero
+  (<|>) = mplus
 
 parse :: Parser s a -> [s] -> [(a, [s])]
 parse (Parser p) = parse' $ p $ flip ReturnChoice Fail
