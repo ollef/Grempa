@@ -1,27 +1,68 @@
+{-# LANGUAGE MultiParamTypeClasses, TypeSynonymInstances, FlexibleInstances, FunctionalDependencies  #-}
 module Lexer where
-
+import ParserCore
 import Data.Char
-import CheckedParser
-import Prelude hiding ((>>=), (>>), return)
 
 data Symbol
   = Id String
   | Num String
-  | Op String
-  | LParen
-  | RParen
+  | Op String 
+  | LParen | RParen
+  | UScore
+  | Arrow
+  | HasType
+  | Comment
+  | LComment | RComment
+  | LBrace | RBrace
+  | Endl
   deriving (Show, Eq)
+
+class Lex l s | l -> s where
+  (-->) :: l -> a -> Parser s a
+
+instance Lex String Char where
+  str --> sym = do
+    match  str
+    return sym
+
+instance Lex [String] Char where
+  ss --> sym = oneOf $ map (--> sym) ss
+
+lexer = many . oneOf $
+  [ "("    --> LParen
+  , ")"    --> RParen
+  , "_"    --> UScore
+  , ["->"] --> Arrow
+  , ["::"] --> HasType
+  , "--"   --> Comment
+  , "{-"   --> LComment
+  , "-}"   --> RComment
+  , "{"    --> LBrace
+  , "}"    --> RBrace
+  , "\n"   --> Endl
+  ]
 
 -------------------------------------------------------------------------------
 -- Helper functions
 
-pred :: (s -> Bool) -> CParser s (Maybe s)
-pred r = do
-  s <- symbol
-  if r s then return s else pfail
+match :: Eq s => [s] -> Parser s [s]
+match y = do x <- look; m y x
+  where 
+    m (r:rs) (s:ss) 
+      | r == s = do symbol; ss' <- m rs ss; return (s : ss')
+    m [] _ = return []
+    m _ _  = pfail
 
-munch :: (s -> Bool) -> CParser s [s]
+munch :: (s -> Bool) -> Parser s [s]
 munch r = do s <- look; inspect s
   where
     inspect (c:cs) | r c = do symbol; cs' <- inspect cs; return (c:cs')
     inspect _ = return []
+
+many :: Parser s a -> Parser s [a]
+many p = do a <- p; return [a]
+  <|> 
+    do a <- p; as <- many p; return (a : as) 
+
+oneOf :: [Parser s a] -> Parser s a
+oneOf = foldl1 (<|>)
