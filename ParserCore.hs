@@ -66,12 +66,3 @@ instance MonadPlus (Parser s) where
 
 parse :: Parser s a -> [s] -> [(a, [s])]
 parse (Parser p) = parse' $ p $ flip ReturnChoice Fail
-
--------------------------------------------------------------------------------
--- Helper functions
-
-{-munch :: (s -> Bool) -> Parser s [s]
-munch r = do s <- look; inspect s
-  where
-    inspect (c:cs) | r c = do symbol; cs' <- inspect cs; return (c:cs')
-    inspect _ = return [] -}
