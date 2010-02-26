@@ -7,6 +7,7 @@ module ParserCore
   , pfail
   , look
   , (<|>)
+  , munch
   ) where
 
 import Control.Applicative
@@ -29,7 +30,7 @@ ReturnChoice x p <||> q = ReturnChoice x (p <||> q)
 p <||> ReturnChoice x q = ReturnChoice x (p <||> q)
 LookBind f <||> LookBind q = LookBind (\s -> f s <||> q s)
 LookBind f <||> q          = LookBind (\s -> f s <||> q)
-p          <||> LookBind q = LookBind (\s -> p <||> q s)
+p          <||> LookBind q = LookBind (\s -> p   <||> q s)
 
 parse' :: Parser' s a -> [s] -> [(a, [s])]
 parse' (SymbolBind x) (c:cs) = parse' (x c) cs

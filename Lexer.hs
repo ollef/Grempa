@@ -12,8 +12,7 @@ data Symbol
   | HasType
   | Comment
   | LComment | RComment
-  | LBrace | RBrace
-  | Endl
+  | LBrace   | RBrace
   | Spc
   deriving (Show, Eq)
 
@@ -22,28 +21,28 @@ class Lex l s | l -> s where
 
 instance Lex String Char where
   str --> sym = do
-    match  str
-    return sym
+      match  str
+      return sym
 
 instance Lex [String] Char where
   ss --> sym = oneOf $ map (--> sym) ss
 
 lexer :: Parser Char [Symbol]
 lexer = some . oneOf $
-  [ "("    --> LParen
-  , ")"    --> RParen
-  , "_"    --> UScore
-  , ["->"] --> Arrow
-  , ["::"] --> HasType
-  , "--"   --> Comment
-  , "{-"   --> LComment
-  , "-}"   --> RComment
-  , "{"    --> LBrace
-  , "}"    --> RBrace
-  , "\n"   --> Endl
-  , mmunch isSpace >> return Spc
-  , Id <$> mmunch (not . isSpace)
-  ]
+    [ "("    --> LParen
+    , ")"    --> RParen
+    , "_"    --> UScore
+    , ["->"] --> Arrow
+    , ["::"] --> HasType
+    , "--"   --> Comment
+    , "{-"   --> LComment
+    , "-}"   --> RComment
+    , "{"    --> LBrace
+    , "}"    --> RBrace
+    --, "\n"   --> Endl
+    , const Spc <$> mmunch isSpace
+    , Id        <$> mmunch (not . isSpace)
+    ]
 
 -------------------------------------------------------------------------------
 -- Helper functions
@@ -56,19 +55,37 @@ match y = do x <- look; m y x
     m [] _ = return []
     m _ _  = pfail
 
-munch :: (s -> Bool) -> Parser s [s]
-munch r = do s <- look; inspect s
-  where
-    inspect (c:cs) | r c = do symbol; cs' <- inspect cs; return (c:cs')
-    inspect _ = return []
-
 mmunch :: (s -> Bool) -> Parser s [s]
 mmunch pred = do
-  s <- symbol
-  if pred s then do
-    ss <- munch pred
-    return $ s : ss
-   else pfail
+    s:ss <- look
+    if pred s then do
+      ss <- munch pred
+      return $ s : ss
+     else pfail 
 
 oneOf :: [Parser s a] -> Parser s a
 oneOf = foldl1 (<|>)
+
+-------------------------------------------------------------------------------
+-- Indentation syntax
+
+indentToBraces :: String -> String
+indentToBraces inp = f ++ indent [n] (map startSpaces ss)
+  where
+    (n, f) = startSpaces s
+    (s:ss) = lines inp
+
+    indent :: [Int] -> [(Int, String)] -> String
+    indent ns ((_,[]):xs) = indent ns xs
+    indent (n:ns) ((s,x):xs) = case compare s n of
+        GT -> " { " ++ x ++ indent (s : n : ns) xs
+        EQ -> " ; " ++ x ++ indent (n : ns)     xs
+        LT -> " } "      ++ indent ns ((s, x) : xs)
+    indent [] [] = ""
+    indent (n:ns) [] = " } " ++ indent ns []
+
+    startSpaces :: String -> (Int, String)
+    startSpaces (s:ss) | isSpace s = let (sp, str) = startSpaces ss in (sp + 1, str)
+    startSpaces ss                 = (0, ss)
+
+test = parse lexer . indentToBraces <$> readFile "Test.fs" 
