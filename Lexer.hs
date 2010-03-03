@@ -1,4 +1,3 @@
-{-# LANGUAGE MultiParamTypeClasses, TypeSynonymInstances, FlexibleInstances, FunctionalDependencies  #-}
 module Lexer where
 import ParserCore
 import Control.Applicative
@@ -16,30 +15,26 @@ data Symbol
   | Spc
   deriving (Show, Eq)
 
-class Lex l s | l -> s where
-  (-->) :: l -> a -> Parser s a
+(-->) :: Eq s => [s] -> a -> Parser s a
+str --> sym = do
+    match  str
+    return sym
 
-instance Lex String Char where
-  str --> sym = do
-      match  str
-      return sym
-
-instance Lex [String] Char where
-  ss --> sym = oneOf $ map (--> sym) ss
+(|->) :: Eq s => [[s]] -> a -> Parser s a
+ss |-> sym = oneOf $ map (--> sym) ss
 
 lexer :: Parser Char [Symbol]
 lexer = some . oneOf $
     [ "("    --> LParen
     , ")"    --> RParen
     , "_"    --> UScore
-    , ["->"] --> Arrow
-    , ["::"] --> HasType
+    , ["->"] |-> Arrow
+    , ["::"] |-> HasType
     , "--"   --> Comment
     , "{-"   --> LComment
     , "-}"   --> RComment
     , "{"    --> LBrace
     , "}"    --> RBrace
-    --, "\n"   --> Endl
     , const Spc <$> mmunch isSpace
     , Id        <$> mmunch (not . isSpace)
     ]
@@ -53,15 +48,14 @@ match y = do x <- look; m y x
     m (r:rs) (s:ss) 
       | r == s = do symbol; ss' <- m rs ss; return (s : ss')
     m [] _ = return []
-    m _ _  = pfail
+    m _  _ = pfail
 
 mmunch :: (s -> Bool) -> Parser s [s]
-mmunch pred = do
-    s:ss <- look
-    if pred s then do
-      ss <- munch pred
-      return $ s : ss
-     else pfail 
+mmunch p = do
+    ss <- look
+    case ss of
+      s:ss | p s -> munch p
+      _ -> pfail
 
 oneOf :: [Parser s a] -> Parser s a
 oneOf = foldl1 (<|>)
@@ -70,7 +64,7 @@ oneOf = foldl1 (<|>)
 -- Indentation syntax
 
 indentToBraces :: String -> String
-indentToBraces inp = f ++ indent [n] (map startSpaces ss)
+indentToBraces inp = {-f ++-} indent [0] $ map startSpaces (s:ss)
   where
     (n, f) = startSpaces s
     (s:ss) = lines inp
@@ -88,4 +82,10 @@ indentToBraces inp = f ++ indent [n] (map startSpaces ss)
     startSpaces (s:ss) | isSpace s = let (sp, str) = startSpaces ss in (sp + 1, str)
     startSpaces ss                 = (0, ss)
 
-test = parse lexer . indentToBraces <$> readFile "Test.fs" 
+testFile = readFile "Test.fs"
+testStr s = return s
+
+indentTest i = indentToBraces <$> i
+test i = parse lexer . indentToBraces <$> i
+
+mmunchTest = parse (Id <$> mmunch (not . isSpace))
