@@ -12,8 +12,12 @@ data Symbol
   | Comment
   | LComment | RComment
   | LBrace   | RBrace
-  | Spc
-  deriving (Show, Eq)
+  | Equals
+  | SemiColon
+  | Case | Of
+  | Let  | In
+  | Lambda
+  deriving (Eq, Show)
 
 (-->) :: Eq s => [s] -> a -> Parser s a
 str --> sym = do
@@ -24,21 +28,38 @@ str --> sym = do
 ss |-> sym = oneOf $ map (--> sym) ss
 
 lexer :: Parser Char [Symbol]
-lexer = some . oneOf $
-    [ "("    --> LParen
-    , ")"    --> RParen
-    , "_"    --> UScore
-    , ["->"] |-> Arrow
-    , ["::"] |-> HasType
-    , "--"   --> Comment
-    , "{-"   --> LComment
-    , "-}"   --> RComment
-    , "{"    --> LBrace
-    , "}"    --> RBrace
-    , const Spc <$> mmunch isSpace
-    , Id        <$> mmunch (not . isSpace)
-    ]
-
+lexer = do
+    munch isSpace
+    some lex
+  where
+    symbol = oneOf
+        [ "_"    --> UScore
+        , ["->"] |-> Arrow
+        , ["::"] |-> HasType
+        , ["\\"] |-> Lambda
+        , "("    --> LParen
+        , ")"    --> RParen
+        , "--"   --> Comment
+        , "{-"   --> LComment
+        , "-}"   --> RComment
+        , "{"    --> LBrace
+        , "}"    --> RBrace
+        , "case" --> Case
+        , "of"   --> Of
+        , "let"  --> Let
+        , "in"   --> In
+        , "{"    --> LBrace
+        , "}"    --> RBrace
+        , ";"    --> SemiColon
+        , "="    --> Equals
+        ]
+    ident = Id <$> mmunch idChar
+    idChar c = not (isSpace c) && c /= '(' && c /= ')'
+    lex = do
+        res <- symbol `disjoint` ident
+        munch isSpace
+        return res
+    
 -------------------------------------------------------------------------------
 -- Helper functions
 
@@ -70,8 +91,8 @@ indentToBraces inp = {-f ++-} indent [0] $ map startSpaces (s:ss)
     (s:ss) = lines inp
 
     indent :: [Int] -> [(Int, String)] -> String
-    indent ns ((_,[]):xs) = indent ns xs
-    indent (n:ns) ((s,x):xs) = case compare s n of
+    indent ns ((_,[]):xs) = "\n" ++ indent ns xs
+    indent (n:ns) ((s,x):xs) = "\n" ++ case compare s n of
         GT -> " { " ++ x ++ indent (s : n : ns) xs
         EQ -> " ; " ++ x ++ indent (n : ns)     xs
         LT -> " } "      ++ indent ns ((s, x) : xs)
@@ -86,6 +107,10 @@ testFile = readFile "Test.fs"
 testStr s = return s
 
 indentTest i = indentToBraces <$> i
-test i = parse lexer . indentToBraces <$> i
+
+test i = i >>= print . parse lexer . indentToBraces 
 
 mmunchTest = parse (Id <$> mmunch (not . isSpace))
+
+disjointTest = parse $ some $ (Id <$> mmunch (not . isSpace)) `disjoint` (" " --> RBrace)
+

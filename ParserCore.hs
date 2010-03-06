@@ -8,11 +8,15 @@ module ParserCore
   , look
   , (<|>)
   , munch
+  , disjoint
+  , try
   ) where
 
 import Control.Applicative
 import Control.Monad
 import Data.Char
+
+import Unsafe.Coerce
 
 -------------------------------------------------------------------------------
 
@@ -21,6 +25,8 @@ data Parser' s a
   | Fail
   | ReturnChoice a (Parser' s a)
   | LookBind ([s] -> Parser' s a)
+  | TryBind (Parser' s a) (Maybe a -> Parser' s a)
+  -- | Disjoint (Parser' s a) (Parser' s a)
 
 (<||>) :: Parser' s a -> Parser' s a -> Parser' s a
 SymbolBind f <||> SymbolBind q = SymbolBind (\c -> f c <||> q c)
@@ -31,13 +37,34 @@ p <||> ReturnChoice x q = ReturnChoice x (p <||> q)
 LookBind f <||> LookBind q = LookBind (\s -> f s <||> q s)
 LookBind f <||> q          = LookBind (\s -> f s <||> q)
 p          <||> LookBind q = LookBind (\s -> p   <||> q s)
+TryBind p f <||> q = TryBind (p <||> q) (\x -> f x <||> q)
+p <||> TryBind q f = TryBind (p <||> q) (\x -> p <||> f x)
+
+--Disjoint p q <||> Disjoint r s = foldr1 Disjoint [p, q, r, s]
+--Disjoint p q <||> r = Disjoint (p <||> r) (q <||> r)
+p <||> q = error $ show p ++ " <||> " ++ show q 
+
+instance Show (Parser' s a) where
+  show (SymbolBind p) = "SymbolBind "
+  show Fail = "Fail "
+  show (ReturnChoice a p) = "ReturnChoice " ++ show p
+  show (LookBind f) = "LookBind "
+  --show (Disjoint p1 p2) = "Disjoint " ++ show p1 ++ show p2
+  show (TryBind q s) = "TryBind " ++ show q
 
 parse' :: Parser' s a -> [s] -> [(a, [s])]
 parse' (SymbolBind x) (c:cs) = parse' (x c) cs
 parse' (SymbolBind x)   []   = []
 parse' Fail             _    = []
-parse' (ReturnChoice x p) s  = (x, s) : parse' p s
+parse' (ReturnChoice x p) s  = if null s then (x, s) : rest else rest
+  where rest = parse' p s
 parse' (LookBind f) s        = parse' (f s) s
+parse' (TryBind p f) s       = if null res then 
+  where res = parse' p
+--parse' (Disjoint p q) s      = if null res1 then res2 else res1
+  --where 
+    --res1 = parse' p s
+    --res2 = parse' q s
 
 -------------------------------------------------------------------------------
 -- Context passing
@@ -53,6 +80,12 @@ pfail = mzero
 
 look :: Parser s [s]
 look = Parser $ \k -> LookBind k
+
+try :: Parser s a -> Parser s (Maybe a)
+try p = Parser $ \k -> TryBind k
+
+--disjoint :: Parser s a -> Parser s a -> Parser s a 
+--disjoint p q = Parser $ \k -> Disjoint (unParser p k) (unParser q k)
 
 instance Monad (Parser s) where
   return x = Parser $ \k -> k x

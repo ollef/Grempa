@@ -78,4 +78,4 @@ infix 0 <|>
 look = Look
 
 parse :: Parser s True a -> [s] -> [(a, [s])]
-parse = PCore.parse P.. toCore
+parse = PCore.parse . toCore

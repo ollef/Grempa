@@ -4,7 +4,7 @@ fact x = case x of
 
   test = 
     let
-      x = 1
+      x = 1)
       y = 2
       z = 3
     in test
