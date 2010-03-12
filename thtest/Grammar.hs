@@ -22,7 +22,7 @@ f $::= p = mkRule $ f <$> p
 (|||) :: P s a -> P s a -> P s a
 (|||) = (:|:)
 
-(+++) :: P s a -> P s b -> P s (a, b)
+(+++) :: P s a -> P s b -> P s (a,  b)
 (+++) = (:+:)
 
 rule :: GIdent s a -> P s a
@@ -31,11 +31,11 @@ rule = Rule
 symbol :: s -> P s s
 symbol = Symbol
 
-infixl 1 :|:
-infixl 1 |||
-infixl 2 :+:
-infixl 2 +++
-infixr 0 $::=
+infixl 5 :|:
+infixl 5 |||
+infixl 6 :+:
+infixl 6 +++
+infixl 3 $::=
 
 instance Functor (P s) where
   fmap = F
