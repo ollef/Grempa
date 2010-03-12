@@ -1,17 +1,47 @@
-{-# LANGUAGE GADTs, RankNTypes, GeneralizedNewtypeDeriving, ExistentialQuantification #-}
+{-# LANGUAGE GADTs, GeneralizedNewtypeDeriving, ExistentialQuantification #-}
 module Grammar
   ( Grammar, runGrammar
   , (+++), (|||)
   , symbol, rule
   , mkRule
-  , (->::=)
+  , ($::=)
   ) where
 
+import Control.Applicative
 import Control.Monad
 import Control.Monad.Identity
 import Control.Monad.State
 import Control.Monad.Writer
 
+--------------------------------------------------------------------------
+-- Interface
+
+($::=) :: (a -> b) -> P s a -> Grammar s (GIdent s b)
+f $::= p = mkRule $ f <$> p
+
+(|||) :: P s a -> P s a -> P s a
+(|||) = (:|:)
+
+(+++) :: P s a -> P s b -> P s (a, b)
+(+++) = (:+:)
+
+rule :: GIdent s a -> P s a
+rule = Rule
+
+symbol :: s -> P s s
+symbol = Symbol
+
+infixl 1 :|:
+infixl 1 |||
+infixl 2 :+:
+infixl 2 +++
+infixr 0 $::=
+
+instance Functor (P s) where
+  fmap = F
+
+--------------------------------------------------------------------------
+-- Grammar rules (Parser)
 data P s a where
   Symbol :: s -> P s s
   (:|:)  :: P s a -> P s a -> P s a
@@ -25,27 +55,18 @@ instance Show s => Show (P s a) where
       p :|: q  -> show p ++ " | " ++ show q
       p :+: q  -> show p ++ " "   ++ show q 
       F f p    -> show p
-      Rule id  -> "REF(" ++ show id ++ ")"
+      Rule id  -> "RULE(" ++ show id ++ ")"
 
-infixl 3 :+:
-infixl 2 :|:
-infixl 3 +++
-infixl 2 |||
-infixl 1 ->::=
-
-(->::=) :: (a -> b) -> P s a -> Grammar s (GIdent s b)
-f ->::= p = mkRule (F f p)
-
-(|||) = (:|:)
-(+++) = (:+:)
-rule = Rule
-symbol = Symbol
+--------------------------------------------------------------------------
+-- Grammar
 
 data GIdent s a = GIdent Integer
   deriving Show
 
 data Binding s = forall p. Binding (GIdent s p) (P s p)
---data PolyId s  = forall p. PolyId  (GIdent s p)
+
+instance Show s => Show (Binding s) where
+  show (Binding id p) = show id ++ " ::= " ++ show p
 
 newtype Grammar s a = Grammar 
     { unGrammar 
