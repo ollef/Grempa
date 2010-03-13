@@ -1,22 +1,22 @@
-{-# LANGUAGE GADTs, GeneralizedNewtypeDeriving, ExistentialQuantification #-}
-module Grammar
-  ( Grammar, runGrammar
+{-# LANGUAGE PackageImports, GADTs, GeneralizedNewtypeDeriving, ExistentialQuantification, RankNTypes, KindSignatures #-}
+module Grammar where
+  {-( Grammar, runGrammar
   , (+++), (|||)
   , symbol, rule
   , mkRule
   , ($::=)
-  ) where
+  ) where -}
 
 import Control.Applicative
 import Control.Monad
-import Control.Monad.Identity
-import Control.Monad.State
-import Control.Monad.Writer
+import "mtl" Control.Monad.Identity
+import "mtl" Control.Monad.State
+import "mtl" Control.Monad.Writer
 
 --------------------------------------------------------------------------
 -- Interface
 
-($::=) :: (a -> b) -> P s a -> Grammar s (GIdent s b)
+{-($::=) :: (a -> b) -> P s a -> Grammar s (GIdent s b)
 f $::= p = mkRule $ f <$> p
 
 (|||) :: P s a -> P s a -> P s a
@@ -39,7 +39,7 @@ infixl 3 $::=
 
 instance Functor (P s) where
   fmap = F
-
+-}
 --------------------------------------------------------------------------
 -- Grammar rules (Parser)
 data P s a where
@@ -47,7 +47,7 @@ data P s a where
   (:|:)  :: P s a -> P s a -> P s a
   (:+:)  :: P s a -> P s b -> P s (a, b)
   F      :: (a -> b) -> P s a -> P s b
-  Rule   :: GIdent s a -> P s a
+  Rule   :: Ref a env -> P s a
 
 instance Show s => Show (P s a) where
   show p = case p of
@@ -55,47 +55,96 @@ instance Show s => Show (P s a) where
       p :|: q  -> show p ++ " | " ++ show q
       p :+: q  -> show p ++ " "   ++ show q 
       F f p    -> show p
-      Rule id  -> "RULE(" ++ show id ++ ")"
+      Rule r  -> "RULE()"
+
+data Ref a env where
+    Zero :: Ref a (a, env')
+    Succ :: Ref a env' -> Ref a (x, env')
+
+data Env f env where
+    Empty :: Env f ()
+    Ext   :: f a -> Env f env' -> Env f (a, env')
+
+lookupRef :: Ref a env -> Env f env -> f a
+lookupRef Zero     (Ext p _ ) = p
+lookupRef (Succ r) (Ext _ ps) = lookupRef r ps
+
+updateRef :: Ref a env -> (f a -> f a) -> Env f env -> Env f env
+updateRef Zero     f (Ext p ps) = Ext (f p) ps
+updateRef (Succ r) f (Ext p ps) = Ext p (updateRef r f ps)
+
+data GEnv s env  = forall a. GEnv (Env (P s) env) (Ref a env)
+
+{-newtype Grammar s a = Grammar { unGrammar :: StateT (GEnv s) Identity a } 
+  deriving 
+    ( Functor, Monad, MonadFix
+    , MonadState (GEnv s)
+    ) -}
+
+mkRule :: GEnv s env -> P s a -> GEnv s (a, env')
+mkRule (GEnv env refs) p = GEnv (Ext p env) (Succ refs)
 
 --------------------------------------------------------------------------
 -- Grammar
-
+{-
 data GIdent s a = GIdent Integer
-  deriving Show
+  deriving (Show, Eq)
 
 data Binding s = forall p. Binding (GIdent s p) (P s p)
+
+data Bindings s = Bindings
+  { bindings :: [Binding s]
+  , names    :: [Integer]
+  }
 
 instance Show s => Show (Binding s) where
   show (Binding id p) = show id ++ " ::= " ++ show p
 
-newtype Grammar s a = Grammar 
-    { unGrammar 
-      :: WriterT [Binding s] 
-       ( StateT  [Integer] 
-         Identity
-       ) a
-    } deriving ( Monad, MonadFix
-               , MonadWriter [Binding s]
-               , MonadState  [Integer]
-               )
 
-defaultIds :: [Integer]
-defaultIds = [1..]
+newtype Grammar s a = Grammar 
+    { unGrammar :: StateT (Bindings s) Identity a
+    } deriving (Functor, Monad, MonadFix, MonadState (Bindings s))
 
 runGrammar :: Grammar s a -> [Binding s]
-runGrammar = runIdentity
-           . flip evalStateT defaultIds
-           . execWriterT
+runGrammar = bindings
+           . runIdentity
+           . flip execStateT defaultBindings
            . unGrammar
+  where
+    defaultBindings = Bindings [] [1..]
+
+newVar :: Grammar s (GIdent s x)
+newVar = do
+    st <- get
+    let v:vs = names st
+    put st {names = vs}
+    return $ GIdent v
+
+addRule :: GIdent s p -> P s p -> Grammar s ()
+addRule i p = do
+    st <- get
+    put st {bindings = Binding i p : bindings st}
 
 mkRule :: P s p -> Grammar s (GIdent s p)
 mkRule p = do
     v <- newVar
-    tell [Binding v p]
+    addRule v p
     return v
 
-newVar :: Grammar s (GIdent s x)
-newVar = do
-    v:vs <- get
-    put vs
-    return $ GIdent v
+findRule :: GIdent s p -> Grammar s (P s p)
+findRule i = find i <$> gets bindings
+
+find :: GIdent s p -> [Binding s] -> P s p
+find i (Binding i' p : bs) 
+    | i == i'   = p
+    | otherwise = find i bs
+    
+--------------------------------------------------------------------------
+-- Left recursion elimination
+
+elim :: GIdent s p -> Grammar s ()
+elim i = do
+    r <- findRule i
+    return ()
+-}
+
