@@ -9,10 +9,10 @@ testGrammar = do
       a <- id                      $::= symbol 'a'
   return x
 
-star r = do
+{-star r = do
   rec
       rest <- star r
       x    <- (:[])       $::= r
       xs   <- uncurry (:) $::= r +++ rule rest
       ret  <- id          $::= x ||| xs
-  return ret
+  return ret-}
