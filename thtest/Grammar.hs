@@ -88,6 +88,16 @@ instance (Show (p s a)) => Show (PFun a p s b) where
 instance Show (ident s a) => Show (PRule ident s a) where
     show (PRule i) = "RULE(" ++ show i ++ ")"
 
+class ToP r s a where
+    toP :: r s a -> P s a
+instance ToP PSymbol s a where
+    toP (PSymbol s) = Symbol s
+instance (ToP p s a, ToP q s a) => ToP (PChoice p q) s a where
+    toP (PChoice p q) = p :|: q
+instance (ToP p s a, ToP q s b) => ToP (PSeq p q) s (a, b) where
+    toP (PSeq p q) = p :+: q
+instance (ToP p s a) => ToP (PFun (a -> b) p) s b where
+    toP (PFun f p) = F f p
 
 
 test = symbol 'a' +++ symbol 'b' ||| symbol 'c' +++ symbol 'd' 
@@ -104,10 +114,10 @@ infixl 6 +++
 
 --------------------------------------------------------------------------
 -- Grammar
-{-
+
 data GId s a = GId Integer
   deriving (Show)
-
+{-
 class Equals a b where
   (=?=) :: a -> b -> Bool
 
