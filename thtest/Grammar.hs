@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, GeneralizedNewtypeDeriving, MultiParamTypeClasses, FunctionalDependencies, KindSignatures, FlexibleContexts, FlexibleInstances, UndecidableInstances, PackageImports #-}
+{-# LANGUAGE GADTs, GeneralizedNewtypeDeriving, MultiParamTypeClasses, FunctionalDependencies, KindSignatures, FlexibleContexts, FlexibleInstances, UndecidableInstances, PackageImports, ExistentialQuantification #-}
 module Grammar where
   {-( Grammar, runGrammar
   , (+++), (|||)
@@ -20,7 +20,7 @@ import Unsafe.Coerce
 
 ($::=) :: (a -> b) -> P s a -> Grammar s (GId s b)
 f $::= p = mkRule $ f <$> p
-
+-}
 (|||) :: P s a -> P s a -> P s a
 (|||) = (:|:)
 
@@ -37,11 +37,13 @@ infixl 5 :|:
 infixl 5 |||
 infixl 6 :+:
 infixl 6 +++
-infixl 3 $::=
+--infixl 3 $::=
+
+test = symbol 'a' +++ symbol 'b' ||| symbol 'c' +++ symbol 'd' 
 
 instance Functor (P s) where
   fmap = F
-
+{-
 mkRule :: P s p -> Grammar s (GId s p)
 mkRule p = do
     v <- newName
@@ -58,6 +60,14 @@ data P s a where
   F      :: (a -> b) -> P s a -> P s b
   Rule   :: GId s a -> P s a
 
+data FromP s a = forall p. ToP p s a => FromP (p s a)
+
+fromP :: P s a -> FromP s a
+fromP (Symbol s) = FromP $ PSymbol s
+fromP (p :|: q)  = FromP $ PChoice (fromP p) (fromP q)
+fromP (p :+: q)  = FromP $ PSeq    (fromP p) (fromP q)
+fromP (F f p)    = FromP $ PFun f  (fromP p)
+
 instance Show s => Show (P s a) where
   show p = case p of
       Symbol s -> show s
@@ -73,7 +83,7 @@ data PChoice :: (* -> * -> *) -> (* -> * -> *) -> * -> * -> * where
 data PSeq :: (* -> * -> *) -> (* -> * -> *) -> * -> * -> * where
     PSeq :: p s a -> q s b -> PSeq p q s (a, b)
 data PFun :: * -> (* -> * -> *) -> * -> * -> * where
-    PFun :: (a -> b) -> p s a -> PFun a p s b
+    PFun :: (a -> b) -> p s a -> PFun (a -> b) p s b
 data PRule :: (* -> * -> *) -> * -> * -> * where
     PRule :: ident s a -> PRule ident s a
 
@@ -83,7 +93,7 @@ instance (Show (p s a), Show (q s a)) => Show (PChoice p q s a) where
     show (PChoice p q) = show p ++ " | " ++ show q
 instance (Show (p s a), Show (q s b)) => Show (PSeq p q s (a, b)) where
     show (PSeq p q) = show p ++ " " ++ show q
-instance (Show (p s a)) => Show (PFun a p s b) where
+instance (Show (p s a)) => Show (PFun (a -> b) p s b) where
     show (PFun f p) = show p
 instance Show (ident s a) => Show (PRule ident s a) where
     show (PRule i) = "RULE(" ++ show i ++ ")"
@@ -93,24 +103,13 @@ class ToP r s a where
 instance ToP PSymbol s a where
     toP (PSymbol s) = Symbol s
 instance (ToP p s a, ToP q s a) => ToP (PChoice p q) s a where
-    toP (PChoice p q) = p :|: q
+    toP (PChoice p q) = toP p :|: toP q
 instance (ToP p s a, ToP q s b) => ToP (PSeq p q) s (a, b) where
-    toP (PSeq p q) = p :+: q
-instance (ToP p s a) => ToP (PFun (a -> b) p) s b where
-    toP (PFun f p) = F f p
-
-
-test = symbol 'a' +++ symbol 'b' ||| symbol 'c' +++ symbol 'd' 
-
-symbol = PSymbol
-(|||)  = PChoice
-(+++)  = PSeq
-fun    = PFun
-rule   = PRule
-
-infixl 5 |||
-infixl 6 +++
-
+    toP (PSeq p q) = toP p :+: toP q
+instance ToP p s a => ToP (PFun (a -> b) p) s b where
+    toP (PFun f p) = F f (toP p)
+instance ToP FromP s a where
+    toP (FromP p) = toP p
 
 --------------------------------------------------------------------------
 -- Grammar
