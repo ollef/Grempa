@@ -17,3 +17,12 @@ testGrammar = do
       xs   <- uncurry (:) $::= r +++ rule rest
       ret  <- id          $::= x ||| xs
   return ret-}
+
+r = do
+  rec
+    a <- id $::= (\(a,b) -> a ++ b:[]) <$> rule a +++ symbol 'a' ||| (:[]) <$> symbol 'b'
+  return a
+
+left = do
+    p' <- r >>= leftMostG
+    return p'
