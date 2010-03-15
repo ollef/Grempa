@@ -5,9 +5,9 @@ import Grammar
 
 testGrammar = do
   rec
-      x <- (\((a, b), c) -> a:b:c) $::= rule a +++ rule a +++ rule x
-      y <- (:[])                   $::= symbol 'b'
-      a <- id                      $::= symbol 'a'
+      x <- (\((a,b),c) -> a:b:c) $::= a ~~ a ~~ x
+      y <- (:[])                 $::= "foobar"
+      a <- id                    $::= 'a'
   return x
 
 {-star r = do
@@ -20,7 +20,7 @@ testGrammar = do
 
 r = do
   rec
-    a <- id $::= (\(a,b) -> a ++ b:[]) <$> rule a +++ symbol 'a' ||| (:[]) <$> symbol 'b'
+    a <- id $::= (\(a,b) -> a ++ b:[]) $: a ~~ 'a' -|- (:[]) $: 'b'
   return a
 
 left = do

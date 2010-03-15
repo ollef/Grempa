@@ -1,16 +1,14 @@
+{-# LANGUAGE TemplateHaskell #-}
 module Test where
 
 import Language.Haskell.TH
 
-list = [1, 2, 3] 
+data Symbol = Empty | Symbol String
+
+list = [Symbol "a", Symbol "b", Empty] 
 
 mkCase list = do
     var <- newName "n"
+    m <- mapM (\x -> Match [p|x|] (NormalB (LitE (IntegerL (1)))) []) list
     return $ LamE [VarP var] $ 
-        CaseE (VarE var) $
-            map (\n -> Match 
-                (LitP (IntegerL n)) 
-                (NormalB (LitE (IntegerL (n+1)))) 
-                []) 
-                list
-  
+        CaseE (VarE var) m

@@ -1,7 +1,10 @@
+{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PackageImports #-}
+
 
 module Grammar where
 
@@ -15,14 +18,14 @@ import Unsafe.Coerce
 --------------------------------------------------------------------------
 -- Interface
 
-($::=) :: (a -> b) -> P s a -> Grammar s (GId s b)
-f $::= p = mkRule $ f <$> p
+($::=) :: ToP p s a => (a -> b) -> p -> Grammar s (GId s b)
+f $::= p = mkRule $ f $: p
 
-(|||) :: P s a -> P s a -> P s a
-(|||) = (:|:)
+(-|-) :: (ToP p s a, ToP q s a) => p -> q -> P s a
+p -|- q = toP p :|: toP q
 
-(+++) :: P s a -> P s b -> P s (a,  b)
-(+++) = (:+:)
+(~~) :: (ToP p s a, ToP q s b) => p -> q -> P s (a,  b)
+p ~~ q = toP p :+: toP q
 
 rule :: GId s a -> P s a
 rule = Rule
@@ -31,15 +34,14 @@ symbol :: s -> P s s
 symbol = Symbol
 
 infixl 3 :|:
-infixl 3 |||
+infixl 3 -|-
+infixl 4 $:
 infixl 5 :+:
-infixl 5 +++
+infixl 5 ~~
 infixl 2 $::=
 
-test = symbol 'a' +++ symbol 'b' ||| symbol 'c' +++ symbol 'd' 
-
-instance Functor (P s) where
-  fmap = F
+($:) :: ToP p s a => (a -> b) -> p -> P s b
+f $: p = Fun f (toP p)
 
 mkRule :: P s p -> Grammar s (GId s p)
 mkRule p = do
@@ -47,22 +49,36 @@ mkRule p = do
     addRule v p
     return v
 
+class ToP b s a | b -> s a where
+    toP :: b -> P s a
+instance ToP Char Char Char where toP = symbol
+instance ToP a a a => ToP [a] a [a] where
+    toP []     = error "toP: empty list"
+    toP [c]    = (:[]) $: toP c 
+    toP (c:cs) = (\(x, xs) -> x : xs) $: toP c ~~ toP cs
+instance ToP (P s a) s a where toP = id
+instance ToP (GId s a) s a where toP = rule
+
 --------------------------------------------------------------------------
 -- Grammar rules (Parser)
 
+data Param a b = a ::: b
+
 data P s a where
   Symbol :: s -> P s s
+  --Empty  :: P s ()
   (:|:)  :: P s a -> P s a -> P s a
   (:+:)  :: P s a -> P s b -> P s (a, b)
-  F      :: (a -> b) -> P s a -> P s b
+  Fun    :: (a -> b) -> P s a -> P s b
   Rule   :: GId s a -> P s a
 
 instance Show s => Show (P s a) where
   show p = case p of
       Symbol s -> show s
+      --Empty    -> "e"
       p :|: q  -> show p ++ " | " ++ show q
       p :+: q  -> show p ++ " "   ++ show q 
-      F f p    -> show p
+      Fun f p  -> show p
       Rule id  -> "RULE(" ++ show id ++ ")"
 
 --------------------------------------------------------------------------
@@ -149,7 +165,7 @@ leftMost :: P s a -> AnyP s
 leftMost p = case p of
     p :|: _ -> leftMost p
     p :+: _ -> leftMost p
-    F f p   -> leftMost p
+    Fun f p -> leftMost p
     _       -> AnyP p
 
 leftMostG :: GId s a -> Grammar s (AnyP s)
@@ -168,9 +184,3 @@ leftMostG x = do
 
 leftRec :: GId s a -> Grammar s ()
 leftRec = undefined
-
--- A = baaaaaaaaaa
--- A  ::= A a | b
--- =>
--- A  ::= b A'
--- A' ::= e | a A';
