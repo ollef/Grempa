@@ -10,6 +10,13 @@ testGrammar = do
       a <- id                    $::= 'a'
   return x
 
+{-testa = do
+  rec
+    x <- 'a' ~~ z  $$ \(a,b) -> a:b
+    x |- 'b' ~~ z  $$ \(a,b) -> a:b
+    x |- 'c' ~~ z  $$ \(a,b) -> a:b
+    z <- 'z'       $$ \a -> a:[] -}
+
 {-star r = do
   rec
       rest <- star r
@@ -17,12 +24,3 @@ testGrammar = do
       xs   <- uncurry (:) $::= r +++ rule rest
       ret  <- id          $::= x ||| xs
   return ret-}
-
-r = do
-  rec
-    a <- id $::= (\(a,b) -> a ++ b:[]) $: a ~~ 'a' -|- (:[]) $: 'b'
-  return a
-
-left = do
-    p' <- r >>= leftMostG
-    return p'

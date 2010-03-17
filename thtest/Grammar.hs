@@ -5,7 +5,6 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PackageImports #-}
 
-
 module Grammar where
 
 import Control.Applicative
@@ -18,19 +17,19 @@ import Unsafe.Coerce
 --------------------------------------------------------------------------
 -- Interface
 
-($::=) :: ToP p s a => (a -> b) -> p -> Grammar s (GId s b)
+($::=) :: ToRule p s a => (a -> b) -> p -> Grammar s (RId s b)
 f $::= p = mkRule $ f $: p
 
-(-|-) :: (ToP p s a, ToP q s a) => p -> q -> P s a
-p -|- q = toP p :|: toP q
+(-|-) :: (ToRule p s a, ToRule q s a) => p -> q -> Rule s a
+p -|- q = toRule p :|: toRule q
 
-(~~) :: (ToP p s a, ToP q s b) => p -> q -> P s (a,  b)
-p ~~ q = toP p :+: toP q
+(~~) :: (ToRule p s a, ToRule q s b) => p -> q -> Rule s (a,  b)
+p ~~ q = toRule p :+: toRule q
 
-rule :: GId s a -> P s a
+rule :: RId s a -> Rule s a
 rule = Rule
 
-symbol :: s -> P s s
+symbol :: s -> Rule s s
 symbol = Symbol
 
 infixl 3 :|:
@@ -40,39 +39,37 @@ infixl 5 :+:
 infixl 5 ~~
 infixl 2 $::=
 
-($:) :: ToP p s a => (a -> b) -> p -> P s b
-f $: p = Fun f (toP p)
+($:) :: ToRule p s a => (a -> b) -> p -> Rule s b
+f $: p = Fun f (toRule p)
 
-mkRule :: P s p -> Grammar s (GId s p)
+mkRule :: Rule s a -> Grammar s (RId s a)
 mkRule p = do
     v <- newName
     addRule v p
     return v
 
-class ToP b s a | b -> s a where
-    toP :: b -> P s a
-instance ToP Char Char Char where toP = symbol
-instance ToP a a a => ToP [a] a [a] where
-    toP []     = error "toP: empty list"
-    toP [c]    = (:[]) $: toP c 
-    toP (c:cs) = (\(x, xs) -> x : xs) $: toP c ~~ toP cs
-instance ToP (P s a) s a where toP = id
-instance ToP (GId s a) s a where toP = rule
+class ToRule b s a | b -> s a where
+    toRule :: b -> Rule s a
+instance ToRule Char Char Char where toRule = symbol
+instance ToRule a a a => ToRule [a] a [a] where
+    toRule []     = error "toRule: empty list"
+    toRule [c]    = (:[]) $: toRule c 
+    toRule (c:cs) = (\(x, xs) -> x : xs) $: toRule c ~~ toRule cs
+instance ToRule (Rule s a) s a where toRule = id
+instance ToRule (RId s a) s a where toRule = rule
 
 --------------------------------------------------------------------------
--- Grammar rules (Parser)
+-- Grammar rules 
 
-data Param a b = a ::: b
-
-data P s a where
-  Symbol :: s -> P s s
+data Rule s a where
+  Symbol :: s -> Rule s s
   --Empty  :: P s ()
-  (:|:)  :: P s a -> P s a -> P s a
-  (:+:)  :: P s a -> P s b -> P s (a, b)
-  Fun    :: (a -> b) -> P s a -> P s b
-  Rule   :: GId s a -> P s a
+  (:|:)  :: Rule s a -> Rule s a -> Rule s a
+  (:+:)  :: Rule s a -> Rule s b -> Rule s (a, b)
+  Fun    :: (a -> b) -> Rule s a -> Rule s b
+  Rule   :: RId  s a -> Rule s a
 
-instance Show s => Show (P s a) where
+instance Show s => Show (Rule s a) where
   show p = case p of
       Symbol s -> show s
       --Empty    -> "e"
@@ -84,17 +81,17 @@ instance Show s => Show (P s a) where
 --------------------------------------------------------------------------
 -- Grammar
 
-data GId s a = GId Integer
+data RId s a = RId Integer
   deriving (Show)
 
 class Equals a b where
   (=?=) :: a -> b -> Bool
 
-instance Equals (GId s a) (GId s b) where
-  GId x =?= GId y = x == y
+instance Equals (RId s a) (RId s b) where
+  RId x =?= RId y = x == y
 
 data Binding s where
-  Binding :: GId s p -> P s p -> Binding s
+  Binding :: RId s p -> Rule s p -> Binding s
 
 instance Show s => Show (Binding s) where
   show (Binding id p) = show id ++ " ::= " ++ show p
@@ -127,60 +124,30 @@ evalGrammar = runIdentity
             . flip evalStateT defaultEnv
             . unGrammar
 
-newVar :: Grammar s (GId s x)
-newVar = do
-    st <- get
-    let v:vs = names st
-    put st {names = vs}
-    return $ GId v
-
-addRule :: GId s p -> P s p -> Grammar s ()
+addRule :: RId s p -> Rule s p -> Grammar s ()
 addRule v p = do
     st <- get
     put st {bindings = Binding v p : bindings st}
 
-newName :: Grammar s (GId s p)
+newName :: Grammar s (RId s p)
 newName = do
     st <- get
     let v:vs = names st
     put st {names = vs}
-    return $ GId v
+    return $ RId v
 
-getRule :: GId s p -> Grammar s (P s p)
+getRule :: RId s p -> Grammar s (Rule s p)
 getRule x = findRule x <$> gets bindings
   where
-    findRule :: GId s p -> [Binding s] -> P s p
+    findRule :: RId s p -> [Binding s] -> Rule s p
     findRule x (Binding x' p : bs) | x =?= x'  = unsafeCoerce p -- Hack!
                                    | otherwise = findRule x bs
 
 --------------------------------------------------------------------------
+-- Any rule
 
-data AnyP s where
-    AnyP :: P s a -> AnyP s 
+data AnyR s where
+    AnyR :: Rule s a -> AnyR s 
 
-instance Show s => Show (AnyP s) where
-    show (AnyP p) = show p
-
-leftMost :: P s a -> AnyP s
-leftMost p = case p of
-    p :|: _ -> leftMost p
-    p :+: _ -> leftMost p
-    Fun f p -> leftMost p
-    _       -> AnyP p
-
-leftMostG :: GId s a -> Grammar s (AnyP s)
-leftMostG x = do
-    p <- getRule x
-    leftMostG' x p
-  where
-    leftMostG' :: GId s a -> P s b -> Grammar s (AnyP s)
-    leftMostG' x p = do
-        let l = leftMost p
-        case l of
-            AnyP (Rule y) -> if x =?= y then return l else do
-                p <- getRule y
-                leftMostG' x p
-            _ -> return l
-
-leftRec :: GId s a -> Grammar s ()
-leftRec = undefined
+instance Show s => Show (AnyR s) where
+    show (AnyR p) = show p
