@@ -20,29 +20,33 @@ infixl 5 :~:
 --infixl 5 ~~
 --infixr 0 &&
 
-data One = One
-data Succ a = Succ a
+data One
+data Succ a
 
---fun :: Uncurry d (a -> b) (a' -> b') => (a -> b) -> RSeq d s a' -> RSeq One s b'
---fun f r = Fun (uncur f) r
+data Func parity a b where
+    SF :: (a -> b) -> Func One a b
+    DF :: ((a, b) -> c) -> Func depth c d -> Func (Succ depth) (a, b) d
 
+class FuncToFun a b | a -> b where
+    funcToFun :: a -> b
 
-class Uncurry p r | p -> r where
+instance FuncToFun (Func One a b) (a -> b) where
+    funcToFun (SF f) = f
+
+instance FuncToFun (Func depth c d) (c -> d) 
+      => FuncToFun (Func (Succ depth) (a, b) d) ((a, b) -> d)
+      where
+    funcToFun (DF f df) (a, b) = (funcToFun df (a, b)) --funcToFun df (f a) 
+    
+
+class Uncurry d p r | d p -> r where
     uncur :: p -> r
 
-instance Uncurry       ((bc -> d),      depth)    ((bc'  -> d), One)
-      => Uncurry ((a  -> bc -> d), Succ depth) ((a, bc') -> d,  One) where
-    uncur (f, Succ d) = (\(a, bc) -> fst (uncur (f a, d)), One) --first f (uncur (f, a)) bc
+--instance Uncurry depth (bc -> d)    ((bc'  -> d), One)
+      -- => Uncurry (Succ depth) (a  -> bc -> d) ((a, bc') -> d) where
+    --uncur f (a, bc) = uncur (f a) bc
 
---instance Uncurry ((a -> b) -> RSeq One s a -> RSeq One s b) 
-                 --((a -> b) -> RSeq One s a -> RSeq One s b) where
-    --uncur = id 
-
---instance Uncurry ((bc  -> d) -> RSeq depth s bc  -> RSeq One s d)
-                 --((bc' -> d) -> RSeq One   s bc' -> RSeq One s d)
-      -- => Uncurry ((a -> bc -> d) -> RSeq (Succ depth) s (a, bc) -> RSeq (Succ depth
-
-instance Uncurry ((a -> b), One) ((a -> b), One) where
+instance Uncurry One (a -> b) (a -> b) where
     uncur = id
 
 --instance Uncurry depth             (bc -> d)     (bc'  -> d)
