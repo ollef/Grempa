@@ -1,22 +1,32 @@
 {-# LANGUAGE DoRec #-}
 
-import Control.Applicative
-import Grammar
+module GrammarTest where
+import Grammar2
 
-testGrammar = do
+{-testGrammar = do
   rec
       x <- (\((a,b),c) -> a:b:c) $::= a ~~ a ~~ x
       y <- (:[])                 $::= "foobar"
       a <- id                    $::= 'a'
-  return x
+  return x -}
 
-{-testa = do
+testa = do
   rec
-    x <- 'a' ~~ z  $$ \(a,b) -> a:b
-    x |- 'b' ~~ z  $$ \(a,b) -> a:b
-    x |- 'c' ~~ z  $$ \(a,b) -> a:b
-    z <- 'z'       $$ \a -> a:[] -}
+    x <- (\(a :~ b) -> a : b)  -::= symbol 'a' -~ rule z  
+                                 -| symbol 'b' -~ rule z 
+                                 -| symbol 'c' -~ rule z
+    z <- id -::= symbol 'z' -$ (\a       -> a:[])
+  return x
+  
+  
 
+
+tester = do
+  rec
+    x <- mkRule $ symbol 'a' -~ symbol 'b' -~ symbol 'c' -$ (\(a :~ b :~ c) -> a:b:c:[])
+               -| symbol 'a'                             -$ (\a -> a:[])
+                        
+  return x
 {-star r = do
   rec
       rest <- star r
