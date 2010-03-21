@@ -12,21 +12,22 @@ import Grammar2
 
 testa = do
   rec
-    x <- (\(a :~ b) -> a : b)  -::= symbol 'a' -~ rule z  
-                                 -| symbol 'b' -~ rule z 
-                                 -| symbol 'c' -~ rule z
-    z <- id -::= symbol 'z' -$ (\a       -> a:[])
+    x <- (\(a :~ b) -> a : b)  -= symbol 'a' -~ rule z  
+                               -| symbol 'b' -~ rule z 
+                               -| symbol 'c' -~ rule z
+    z <- id -= symbol 'z' -$ (\a       -> a:[])
   return x
   
   
 
 
-tester = do
+{-tester = do
   rec
     x <- mkRule $ symbol 'a' -~ symbol 'b' -~ symbol 'c' -$ (\(a :~ b :~ c) -> a:b:c:[])
                -| symbol 'a'                             -$ (\a -> a:[])
                         
   return x
+  -}
 {-star r = do
   rec
       rest <- star r

@@ -1,10 +1,11 @@
-{-# LANGUAGE EmptyDataDecls #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE UndecidableInstances #-}
+
 
 
 module Grammar2 where
@@ -18,7 +19,7 @@ infixr 1 -|
 infixr 5 :~:
 infixr 5 -~
 infixr 2 -$
-infixr 0 -::=
+infixr 0 -=
 
 (-~) :: (To Atom s a p, To Seq s b q) => p -> q -> Seq s (Pair a b)
 p -~ q = to p :~: to q
@@ -30,41 +31,51 @@ p -$ f = SFun f (to p)
 p -| q = Rule (to p : rs)
   where (Rule rs) = to q
 
-(-::=) :: To Rule s a p => (a -> b) -> p -> ST t (RId t s b)
-f -::= r = addRule $ Rule $ map (SFun f) rs
+(-=) :: To Rule s a p => (a -> b) -> p -> ST t (RId t s b)
+f -= r = addRule $ Rule $ map (SFun f) rs
   where (Rule rs) = to r
 
-symbol = ASymbol
-rule   = ARule
+sym   = ASymbol
+rule  = ARule
 
-class To c s a t | t c -> s a where
+class To c s a t | c t -> s a where
     to :: t -> c s a
-instance To Seq s a p => To Rule s a p where
-    to = Rule . (:[]) . to
+
 instance To Rule s a (Rule s a) where
     to = id
---instance To Rule s a (Atom s a) where
-    --to = Rule . (:[]) . to
-instance To Atom s a p => To Seq s a p where
-    to = SOne . to
+instance To Rule s a (Seq s a) where
+    to = Rule . (:[])
+instance To Rule s a (Atom s a) where
+    to = to . SOne
+instance To Rule s a (RId t s a) where
+    to = to . ARule 
+--instance To Rule s s s where
+    --to = to . symbol
+
 instance To Seq s a (Seq s a) where
     to = id
---instance To Seq s a (Atom s a) where
-    --to = SOne
+instance To Seq s a (RId t s a) where
+    to = SOne . to
+instance To Seq s a (Atom s a) where
+    to = SOne . to
+--instance To Seq s s s where
+    --to = to . symbol
+
 instance To Atom s a (RId t s a) where
     to = ARule
 instance To Atom s a (Atom s a) where
     to = id
---instance (To c2 s a (c1 s a), To c3 s a (c2 s a)) => To c3 s a (c1 s a) where
-    --to = to . to
+--instance To Atom s s s where
+    --to = symbol
 
 data Rule s a where
     Rule :: [Seq s a] -> Rule s a
   deriving
     Show
 
-infixr 5 :~
+unRule (Rule ss) = ss
 
+infixr 5 :~
 data Pair a b = a :~ b
 
 data Seq s a where
@@ -95,10 +106,25 @@ addRule r = RId <$> newSTRef (AnyRule r)
 
 getRule :: RId t s a -> ST t (Rule s a)
 getRule (RId ref) = do
-    (AnyRule rule) <- readSTRef ref
+    AnyRule rule <- readSTRef ref
     return $ unsafeCoerce rule
 
-evalGrammar = runST
+type Grammar s a = forall t. ST t (RId t s a)
+
+evalGrammar :: Grammar s a -> Rule s a
+evalGrammar g = runST $ do
+    r <- g
+    getRule r
 
 mkRule :: To Rule s a p => p -> ST t (RId t s a)
 mkRule = addRule . to
+
+
+items :: Seq s a -> [Integer]
+items s = items' 1 s []
+  where
+    items' :: Integer -> Seq s a -> [Integer] -> [Integer]
+    items' n s is = case s of
+        _ :~: b  -> items' (n + 1) b (n : is)
+        SOne _   -> n + 1 : n : is
+        SFun _ p -> items' n p is
