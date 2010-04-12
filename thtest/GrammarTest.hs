@@ -3,6 +3,8 @@
 module GrammarTest where
 import Grammar2
 
+import Control.Monad.ST
+
 {-testGrammar = do
   rec
       x <- (\((a,b),c) -> a:b:c) $::= a ~~ a ~~ x
@@ -12,13 +14,22 @@ import Grammar2
 
 testa = do
   rec
-    x <- (\(a :~ b) -> a : b)  -= symbol 'a' -~ rule z  
-                               -| symbol 'b' -~ rule z 
-                               -| symbol 'c' -~ rule z
-    z <- id -= symbol 'z' -$ (\a       -> a:[])
+    x <- (\(a :~ b) -> a : b)  -= sym 'a' -~ z
+                               -| sym 'b' -~ z
+      -| (\([z] :~ x) -> z :~ x) -$ z -~ x
+    z <- (:[])                    -= sym 'z'
   return x
-  
-  
+
+test t =  do
+    t >>= firstA . ARule
+
+e = do
+  rec
+    x <- id -= a -~ b -~ c
+    a <- id -= sym 'a' -| empty
+    b <- id -= sym 'b' -| empty
+    c <- id -= sym 'c' -| empty
+  return x
 
 
 {-tester = do
