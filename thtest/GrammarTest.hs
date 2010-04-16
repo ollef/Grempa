@@ -1,9 +1,9 @@
 {-# LANGUAGE DoRec #-}
+{-# LANGUAGE PackageImports #-}
 
 module GrammarTest where
 import Grammar2
-
-import Control.Monad.ST
+--import "monads-fd" Control.Monad.State
 
 {-testGrammar = do
   rec
@@ -14,14 +14,17 @@ import Control.Monad.ST
 
 testa = do
   rec
-    x <- (\(a :~ b) -> a : b)  -= sym 'a' -~ z
-                               -| sym 'b' -~ z
+    x <- (\(a :~ b) -> a : b)    -= sym 'a' -~ z
+                                 -| sym 'b' -~ z
       -| (\([z] :~ x) -> z :~ x) -$ z -~ x
     z <- (:[])                    -= sym 'z'
   return x
 
-test t =  do
-    t >>= firstA . ARule
+testFirst t = 
+    evalGrammar $ t >>= first
+
+testFollow t =
+    evalGrammar $ t >>= follow
 
 e = do
   rec
@@ -29,7 +32,37 @@ e = do
     a <- id -= sym 'a' -| empty
     b <- id -= sym 'b' -| empty
     c <- id -= sym 'c' -| empty
-  return x
+  return c
+
+data Expr
+  = Add Expr Expr
+  | Mul Expr Expr
+  | Ident String
+
+expr = do
+    rec
+      e <- id -= mk Add -$ e -~ sym '+' -~ t
+                        -| t
+      t <- id -= mk Mul -$ t -~ sym '*' -~ f
+                        -| f
+      f <- id -= par    -$ sym '(' -~ e -~ sym ')'
+              -| i      -$ sym 'i'
+    return e
+  where
+    mk c = \(a :~ _ :~ b) -> c a b
+    par  = \(_ :~ x :~ _) -> x
+    i    = Ident . (:[])
+
+{-e428 = do
+  rec
+    e  <- -= t -~ e'
+    e' <- -= sym '+' -~ t -~ e'
+          -| empty
+    t  <- -= f -~ t'
+    t' <- -= sym '*' -~ f -~ t
+          -| empty
+    f <- 
+    -}
 
 
 {-tester = do
