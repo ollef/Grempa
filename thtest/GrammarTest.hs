@@ -20,11 +20,14 @@ testa = do
     z <- (:[])                    -= sym 'z'
   return x
 
-testFirst t = 
+{-testFirst t = 
     evalGrammar $ t >>= first
 
 testFollow t =
-    evalGrammar $ t >>= follow
+    evalGrammar $ t >>= follow-}
+
+test f g =
+    evalGrammar $ g >>= f
 
 e = do
   rec
@@ -32,7 +35,7 @@ e = do
     a <- id -= sym 'a' -| empty
     b <- id -= sym 'b' -| empty
     c <- id -= sym 'c' -| empty
-  return c
+  return x
 
 data Expr
   = Add Expr Expr
@@ -52,6 +55,13 @@ expr = do
     mk c = \(a :~ _ :~ b) -> c a b
     par  = \(_ :~ x :~ _) -> x
     i    = Ident . (:[])
+
+tester = do
+    rec
+      e <- id -= const 5 -$ f -~ sym 'a' -| const 0 -$ empty
+      f <- id -= e
+    return e
+
 
 {-e428 = do
   rec
@@ -79,3 +89,5 @@ expr = do
       xs   <- uncurry (:) $::= r +++ rule rest
       ret  <- id          $::= x ||| xs
   return ret-}
+
+main = print $ test clos expr
