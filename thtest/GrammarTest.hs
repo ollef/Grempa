@@ -27,7 +27,7 @@ testFollow t =
     evalGrammar $ t >>= follow-}
 
 test f g =
-    evalGrammar $ g >>= f
+    evalGrammar $ augment g >>= f
 
 e = do
   rec
@@ -89,5 +89,3 @@ tester = do
       xs   <- uncurry (:) $::= r +++ rule rest
       ret  <- id          $::= x ||| xs
   return ret-}
-
-main = print $ test clos expr

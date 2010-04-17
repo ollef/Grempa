@@ -1,3 +1,4 @@
+{-# LANGUAGE DoRec #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
@@ -78,8 +79,8 @@ instance To Atom s a (Atom s a) where
     --to = symbol
 
 ---------------------------------------------------------------------
-data Rule s a where
-    Rule :: [Seq s a] -> Rule s a
+data Rule s a = Rule
+    { unRule :: [Seq s a] }
   deriving Show
 
 infixr 5 :~
@@ -126,7 +127,7 @@ type    Id      = Int
 RId a =?= RId b = a == b
 
 data GrammarState s = GrammarState
-    { rules  :: Map Id (Any (Rule s))
+    { rules  :: Map (Any (RId s)) (Any (Rule s))
     , ids    :: [Id]
     }
 
@@ -146,19 +147,19 @@ addRule :: Show s => Rule s a -> Grammar s (RId s a)
 addRule r = do
     i  <- nextId
     st <- get
-    put st {rules = M.insert i (Any r) (rules st)}
+    put st {rules = M.insert (Any (RId i)) (Any r) (rules st)}
     return $ RId i
 
 getRule :: RId s a -> Grammar s (Rule s a)
-getRule (RId i) = do
-    Any r <- fromJust <$> M.lookup i <$> gets rules
+getRule i = do
+    Any r <- fromJust <$> M.lookup (Any i) <$> gets rules
     return $ unsafeCoerce r -- should be a safe hack
 
 mkRule :: (Show s, To Rule s a p) => p -> Grammar s (RId s a)
 mkRule = addRule . to
 
-getRules :: Show s => Grammar s [Any (IdRule s)]
-getRules = map (\(i, Any r) -> Any (IdRule (RId i) r)) <$> M.toList <$> gets rules
+--getRules :: Show s => Grammar s [Any (IdRule s)]
+--getRules = map (\(i, Any r) -> Any (IdRule (RId i) r)) <$> M.toList <$> gets rules
 
 evalGrammar :: Grammar s a -> a
 evalGrammar = flip evalState def
@@ -167,6 +168,9 @@ evalGrammar = flip evalState def
         { rules = M.empty
         , ids   = [0..]
         }
+
+--rid :: Id -> Rule s a -> RId s a
+--rid i = RId i
 
 ---------------------------------------------------------------------
 
@@ -180,6 +184,15 @@ instance Show (Any (RId s)) where
 instance Eq s => Eq (Any (Atom s)) where
     Any (ATerminal x) == Any (ATerminal y) = x == y
     Any (ARule x)     == Any (ARule y)     = Any x == Any y
+    _                 == _                 = False
+instance Ord s => Ord (Any (Atom s)) where
+    Any (ATerminal x) `compare` Any (ATerminal y) = x `compare` y
+    Any (ARule x)     `compare` Any (ARule y)     = Any x `compare` Any y
+    Any (ATerminal _) `compare` _                 = LT
+    Any (ARule _)     `compare` _                 = GT
+instance Show s => Show (Any (Atom s)) where
+    show (Any (ATerminal x)) = show x
+    show (Any (ARule x))     = show x
 
 data Item s = Item
     { itRule :: Any (RId s)
@@ -188,35 +201,51 @@ data Item s = Item
     }
   deriving (Show, Eq, Ord)
 
-settt = S.fromList [item 0 0 0, item 1 0 1] S.\\ S.fromList [item 1 0 0, item 2 0 2]
-  where
-    item x y z = Any $ RId x
-
-augment :: Grammar s a -> Grammar s a
+augment :: Show s => Grammar s (RId s a) -> Grammar s (RId s a)
 augment g = do
   rec
     s <- id -= r
     r <- g
   return s
 
-{-items :: RId s a -> Grammar s [Item s]
+items :: Ord s => RId s a -> Grammar s (Set (Set (Item s)))
 items i = do
-    Rule ss <- getRule i
-    let ps = zip ss [0..]
-    return $ concatMap prods ps
+    cl <- closureR i
+    gsyms <- S.toList <$> grammarSymbols
+    items' gsyms S.empty $ S.singleton cl
   where
-    prods (s, n) = map (\x -> Item (Any i) n x) (itemsS s)
-    itemsS s = [0..numItemsS s]
-    numItemsS :: Seq s a -> Int
-    numItemsS s = case s of
-        SOne (ATerminal TEmpty) -> 0
-        SOne _                  -> 1
-        a :~: ss  -> numItemsS (SOne a) + numItemsS ss
-        SFun _ ss -> numItemsS ss
-        -}
+    items' :: Ord s => [Any (Atom s)] -> Set (Set (Item s)) -> Set (Set (Item s))
+           -> Grammar s (Set (Set (Item s)))
+    items' gsyms done c = do
+        let itemSets = S.toList c
+        gotos <- S.fromList <$> sequence [goto i x | i <- itemSets, x <- gsyms]
+        let c'    = gotos S.\\ (S.insert S.empty done)
+            done' = done `S.union` c
+        case S.null c' of
+            True  -> return done
+            False -> items' gsyms done' c'
 
-clos    :: Show s => RId s a      -> Grammar s (Set (Item s))
-clos i = closure (S.singleton $ Item (Any i) 0 0)
+grammarSymbols :: Ord s => Grammar s (Set (Any (Atom s)))
+grammarSymbols = do
+    rs <- gets rules
+    let ts   = S.unions
+             $ concatMap (\(Any (Rule ss)) -> map grammarSymbolsS ss) (M.elems rs)
+        nts  = S.fromList
+             $ map (\(Any i) -> Any (ARule i)) (M.keys rs)
+    return $ ts `S.union` nts
+  where
+    grammarSymbolsS :: Ord s => Seq s a -> Set (Any (Atom s))
+    grammarSymbolsS s = case s of
+        SOne a   -> grammarSymbolsA a
+        a :~: ss -> grammarSymbolsA a `S.union` grammarSymbolsS ss
+        SFun _ s -> grammarSymbolsS s
+    grammarSymbolsA :: Ord s => Atom s a -> Set (Any (Atom s))
+    grammarSymbolsA a = case a of
+        ATerminal (TSymbol s) -> S.singleton (Any a)
+        _                     -> S.empty
+
+closureR :: RId s a      -> Grammar s (Set (Item s))
+closureR i = closure (S.singleton $ Item (Any i) 0 0)
 
 closure :: Set (Item s) -> Grammar s (Set (Item s))
 closure si = closure' S.empty si
@@ -243,10 +272,10 @@ closure si = closure' S.empty si
         let si = zip ss [0..]
         return $ S.fromList $ map (\(s, n) -> Item (Any i) n 0) si
 
-goto :: Eq s => Set (Item s) -> Atom s a -> Grammar s (Set (Item s))
+goto :: Eq s => Set (Item s) -> Any (Atom s) -> Grammar s (Set (Item s))
 goto si x = do
     let items = S.toList si
-    g <- catMaybes <$> mapM (nextTest (Any x)) items
+    g <- catMaybes <$> mapM (nextTest x) items
     closure $ S.fromList g
   where
     nextTest :: Eq s => Any (Atom s) -> Item s -> Grammar s (Maybe (Item s))
