@@ -18,9 +18,6 @@ import Data.Set(Set)
 import qualified Data.Set as S
 import Unsafe.Coerce
 
---import Debug.Trace
-trace c m = m
-
 infixr 1 -|
 infixr 5 :~:
 infixr 5 -~
@@ -218,7 +215,7 @@ items i = do
            -> Grammar s (Set (Set (Item s)))
     items' gsyms done c = do
         let itemSets = S.toList c
-        gotos <- S.fromList <$> sequence [goto i x | i <- itemSets, x <- gsyms]
+        gotos <- S.fromList <$> sequence [goto is x | is <- itemSets, x <- gsyms]
         let c'    = gotos S.\\ (S.insert S.empty done)
             done' = done `S.union` c
         case S.null c' of
@@ -236,46 +233,45 @@ grammarSymbols = do
   where
     grammarSymbolsS :: Ord s => Seq s a -> Set (Any (Atom s))
     grammarSymbolsS s = case s of
-        SOne a   -> grammarSymbolsA a
-        a :~: ss -> grammarSymbolsA a `S.union` grammarSymbolsS ss
-        SFun _ s -> grammarSymbolsS s
+        SOne a    -> grammarSymbolsA a
+        a :~: ss  -> grammarSymbolsA a `S.union` grammarSymbolsS ss
+        SFun _ ss -> grammarSymbolsS ss
     grammarSymbolsA :: Ord s => Atom s a -> Set (Any (Atom s))
     grammarSymbolsA a = case a of
-        ATerminal (TSymbol s) -> S.singleton (Any a)
+        ATerminal (TSymbol _) -> S.singleton (Any a)
         _                     -> S.empty
 
 closureR :: RId s a      -> Grammar s (Set (Item s))
 closureR i = closure (S.singleton $ Item (Any i) 0 0)
 
 closure :: Set (Item s) -> Grammar s (Set (Item s))
-closure si = closure' S.empty si
+closure its = closure' S.empty its
   where
-    closure' done si = do
-        let si' = si S.\\ done
-        case S.null si' of
+    closure' done is = do
+        let is' = is S.\\ done
+        case S.null is' of
             True -> return done
             False -> do
-                let items = S.toList si'
-                    done' = done `S.union` si'
-                si'' <- S.unions <$> mapM closItem items
-                closure' done' si''
+                let done' = done `S.union` is'
+                is'' <- S.unions <$> mapM closItem (S.toList is')
+                closure' done' is''
 
     closItem i = do
         a <- nextAtom i
         case a of
-            Any (ARule i) -> firstItems i
+            Any (ARule r) -> firstItems r
             _             -> return S.empty
 
     firstItems :: RId s a -> Grammar s (Set (Item s))
     firstItems i = do
         Rule ss <- getRule i
-        let si = zip ss [0..]
-        return $ S.fromList $ map (\(s, n) -> Item (Any i) n 0) si
+        let si = take (length ss) [0..]
+        return $ S.fromList $ map (\n -> Item (Any i) n 0) si
 
 goto :: Eq s => Set (Item s) -> Any (Atom s) -> Grammar s (Set (Item s))
-goto si x = do
-    let items = S.toList si
-    g <- catMaybes <$> mapM (nextTest x) items
+goto si at = do
+    let its = S.toList si
+    g <- catMaybes <$> mapM (nextTest at) its
     closure $ S.fromList g
   where
     nextTest :: Eq s => Any (Atom s) -> Item s -> Grammar s (Maybe (Item s))
@@ -286,16 +282,14 @@ goto si x = do
             else return Nothing
 
 nextAtom :: Item s -> Grammar s (Any (Atom s))
-nextAtom (Item (Any rule) prod pos) = do
-    Rule ss <- getRule rule
+nextAtom (Item (Any r) prod pos) = do
+    Rule ss <- getRule r
     return $ findNextS (ss !! prod) pos
   where
     findNextS :: Seq s a -> Int -> Any (Atom s)
     findNextS (ATerminal TEmpty :~: ss) n = findNextS ss n
     findNextS (SFun _ ss)               n = findNextS ss n
-    findNextS s 0 = case s of
-        SOne a    -> Any a
-        a :~: _   -> Any a
-    findNextS s n = case s of
-        SOne a    -> Any $ ATerminal TEmpty
-        _ :~: ss  -> findNextS ss (n - 1)
+    findNextS (SOne a)                  0 = Any a
+    findNextS (a :~: _)                 0 = Any a
+    findNextS (SOne _)                  _ = Any $ ATerminal TEmpty
+    findNextS (_ :~: ss)                n = findNextS ss (n - 1)
