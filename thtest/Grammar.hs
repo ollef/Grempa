@@ -1,153 +1,192 @@
-{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE DoRec #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FunctionalDependencies #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PackageImports #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Grammar where
 
 import Control.Applicative
-import Control.Monad
-import "mtl" Control.Monad.Identity
-import "mtl" Control.Monad.State
-import "mtl" Control.Monad.Writer
+import "monads-fd" Control.Monad.State
+import Data.Map(Map)
+import qualified Data.Map as M
+import Data.Maybe
 import Unsafe.Coerce
 
---------------------------------------------------------------------------
--- Interface
+infixr 1 -|
+infixr 5 :~:
+infixr 5 -~
+infixr 2 -$
+infixr 0 -=
 
-($::=) :: ToRule p s a => (a -> b) -> p -> Grammar s (RId s b)
-f $::= p = mkRule $ f $: p
+(-~) :: (To Atom s a p, To Seq s b q) => p -> q -> Seq s (Pair a b)
+p -~ q = to p :~: to q
 
-(-|-) :: (ToRule p s a, ToRule q s a) => p -> q -> Rule s a
-p -|- q = toRule p :|: toRule q
+(-$) :: To Seq s a p => (a -> b) -> p -> Seq s b
+f -$ p = SFun f (to p)
 
-(~~) :: (ToRule p s a, ToRule q s b) => p -> q -> Rule s (a,  b)
-p ~~ q = toRule p :+: toRule q
+(-|) :: (To Seq s a p, To Rule s a q) => p -> q -> Rule s a
+p -| q = Rule (to p : rs)
+  where (Rule rs) = to q
 
-rule :: RId s a -> Rule s a
-rule = Rule
+(-=) :: (Show s, To Rule s a p) => (a -> b) -> p -> Grammar s (RId s b)
+f -= r = addRule $ Rule $ map (SFun f) rs
+  where (Rule rs) = to r
 
-symbol :: s -> Rule s s
-symbol = Symbol
+sym   :: s -> Atom s s
+sym   = ATerminal . TSymbol
+empty :: Atom s s
+empty = ATerminal   TEmpty
+rule  :: RId s a -> Atom s a
+rule  = ARule
 
-infixl 3 :|:
-infixl 3 -|-
-infixl 4 $:
-infixl 5 :+:
-infixl 5 ~~
-infixl 2 $::=
+class To c s a t | c t -> s a where
+    to :: t -> c s a
 
-($:) :: ToRule p s a => (a -> b) -> p -> Rule s b
-f $: p = Fun f (toRule p)
+instance To Rule s a (Rule s a) where
+    to = id
+instance To Rule s a (Seq s a) where
+    to = Rule . (:[])
+instance To Rule s a (Atom s a) where
+    to = to . SOne
+instance To Rule s a (RId s a) where
+    to = to . ARule
+--instance To Rule s s s where
+    --to = to . symbol
 
-mkRule :: Rule s a -> Grammar s (RId s a)
-mkRule p = do
-    v <- newName
-    addRule v p
-    return v
+instance To Seq s a (Seq s a) where
+    to = id
+instance To Seq s a (RId s a) where
+    to = SOne . to
+instance To Seq s a (Atom s a) where
+    to = SOne . to
+--instance To Seq s s s where
+    --to = to . symbol
 
-class ToRule b s a | b -> s a where
-    toRule :: b -> Rule s a
-instance ToRule Char Char Char where toRule = symbol
-instance ToRule a a a => ToRule [a] a [a] where
-    toRule []     = error "toRule: empty list"
-    toRule [c]    = (:[]) $: toRule c 
-    toRule (c:cs) = (\(x, xs) -> x : xs) $: toRule c ~~ toRule cs
-instance ToRule (Rule s a) s a where toRule = id
-instance ToRule (RId s a) s a where toRule = rule
+instance To Atom s a (RId s a) where
+    to = ARule
+instance To Atom s a (Atom s a) where
+    to = id
+--instance To Atom s s s where
+    --to = symbol
 
---------------------------------------------------------------------------
--- Grammar rules 
+---------------------------------------------------------------------
+data Rule s a = Rule
+    { unRule :: [Seq s a] }
+  deriving Show
 
-data Rule s a where
-  Symbol :: s -> Rule s s
-  --Empty  :: P s ()
-  (:|:)  :: Rule s a -> Rule s a -> Rule s a
-  (:+:)  :: Rule s a -> Rule s b -> Rule s (a, b)
-  Fun    :: (a -> b) -> Rule s a -> Rule s b
-  Rule   :: RId  s a -> Rule s a
+infixr 5 :~
+data Pair a b = a :~ b
 
-instance Show s => Show (Rule s a) where
-  show p = case p of
-      Symbol s -> show s
-      --Empty    -> "e"
-      p :|: q  -> show p ++ " | " ++ show q
-      p :+: q  -> show p ++ " "   ++ show q 
-      Fun f p  -> show p
-      Rule id  -> "RULE(" ++ show id ++ ")"
+data Seq s a where
+    (:~:) :: Atom s a -> Seq s b -> Seq s (Pair a b)
+    SOne  :: Atom s a -> Seq s a
+    SFun  :: (a -> b) -> Seq s a -> Seq s b
 
---------------------------------------------------------------------------
--- Grammar
+data Atom s a where
+    ATerminal :: Terminal s -> Atom s s
+    ARule     :: RId s a    -> Atom s a
 
-data RId s a = RId Integer
-  deriving (Show)
+data Terminal s where
+    TEmpty  ::      Terminal s
+    TSymbol :: s -> Terminal s
+  deriving (Ord, Eq)
 
-class Equals a b where
-  (=?=) :: a -> b -> Bool
+data Any t where
+    Any :: t a -> Any t
 
-instance Equals (RId s a) (RId s b) where
-  RId x =?= RId y = x == y
+newtype RId s a = RId Id
+  deriving Show
+type    Id      = Int
+--(=?=) :: RId s a -> RId s b -> Bool
+--RId a =?= RId b = a == b
 
-data Binding s where
-  Binding :: RId s p -> Rule s p -> Binding s
+data GrammarState s = GrammarState
+    { rules  :: Map (Any (RId s)) (Any (Rule s))
+    , ids    :: [Id]
+    }
 
-instance Show s => Show (Binding s) where
-  show (Binding id p) = show id ++ " ::= " ++ show p
+type Grammar s a = State (GrammarState s) a
 
-data Env s = Env
-  { bindings :: [Binding s]
-  , names    :: [Integer]
-  }
+data IdRule s a = IdRule (RId s a) (Rule s a)
+  deriving Show
 
-defaultEnv :: Env s
-defaultEnv = Env {bindings = [], names = [1..]}
+---------------------------------------------------------------------
 
-newtype Grammar s a = Grammar 
-    { unGrammar 
-      :: StateT (Env s)
-                Identity
-                a
-    } deriving ( Monad, MonadFix, Functor
-               , MonadState (Env s)
-               )
+instance Show s => Show (Seq s a) where
+    show (a :~: as) = show a ++ " " ++ show as
+    show (SOne r)   = show r
+    show (SFun _ r) = show r
 
-execGrammar :: Grammar s a -> [Binding s]
-execGrammar = bindings
-            . runIdentity
-            . flip execStateT defaultEnv
-            . unGrammar
+instance Show s => Show (Atom s a) where
+    show (ATerminal t) = show t
+    show (ARule _)   = "RULE(_)"
+
+instance Show s => Show (Terminal s) where
+    show TEmpty      = "ε"
+    show (TSymbol s) = show s
+
+instance Eq (Any (RId s)) where
+    Any (RId i) == Any (RId j) = i == j
+instance Ord (Any (RId s)) where
+    Any (RId i) `compare` Any (RId j) = i `compare` j
+instance Show (Any (RId s)) where
+    show (Any (RId i)) = show i
+
+instance Eq s => Eq (Any (Atom s)) where
+    Any (ATerminal x) == Any (ATerminal y) = x == y
+    Any (ARule x)     == Any (ARule y)     = Any x == Any y
+    _                 == _                 = False
+instance Ord s => Ord (Any (Atom s)) where
+    Any (ATerminal x) `compare` Any (ATerminal y) = x `compare` y
+    Any (ARule x)     `compare` Any (ARule y)     = Any x `compare` Any y
+    Any (ATerminal _) `compare` _                 = LT
+    Any (ARule _)     `compare` _                 = GT
+instance Show s => Show (Any (Atom s)) where
+    show (Any (ATerminal x)) = show x
+    show (Any (ARule x))     = show x
+
+data Item s = Item
+    { itRule :: Any (RId s)
+    , itProd :: Int
+    , itPos  :: Int
+    }
+  deriving (Show, Eq, Ord)
+
+---------------------------------------------------------------------
+
+nextId :: Grammar s Id
+nextId = do
+    st <- get
+    let i = head $ ids st
+    put st {ids = tail (ids st)}
+    return i
+
+addRule :: Show s => Rule s a -> Grammar s (RId s a)
+addRule r = do
+    i  <- nextId
+    st <- get
+    put st {rules = M.insert (Any (RId i)) (Any r) (rules st)}
+    return $ RId i
+
+getRule :: RId s a -> Grammar s (Rule s a)
+getRule i = do
+    Any r <- fromJust <$> M.lookup (Any i) <$> gets rules
+    return $ unsafeCoerce r -- should be a safe hack
+
+mkRule :: (Show s, To Rule s a p) => p -> Grammar s (RId s a)
+mkRule = addRule . to
+
+--getRules :: Show s => Grammar s [Any (IdRule s)]
+--getRules = map (\(i, Any r) -> Any (IdRule (RId i) r)) <$> M.toList <$> gets rules
 
 evalGrammar :: Grammar s a -> a
-evalGrammar = runIdentity
-            . flip evalStateT defaultEnv
-            . unGrammar
-
-addRule :: RId s p -> Rule s p -> Grammar s ()
-addRule v p = do
-    st <- get
-    put st {bindings = Binding v p : bindings st}
-
-newName :: Grammar s (RId s p)
-newName = do
-    st <- get
-    let v:vs = names st
-    put st {names = vs}
-    return $ RId v
-
-getRule :: RId s p -> Grammar s (Rule s p)
-getRule x = findRule x <$> gets bindings
+evalGrammar = flip evalState def
   where
-    findRule :: RId s p -> [Binding s] -> Rule s p
-    findRule x (Binding x' p : bs) | x =?= x'  = unsafeCoerce p -- Hack!
-                                   | otherwise = findRule x bs
-
---------------------------------------------------------------------------
--- Any rule
-
-data AnyR s where
-    AnyR :: Rule s a -> AnyR s 
-
-instance Show s => Show (AnyR s) where
-    show (AnyR p) = show p
+    def = GrammarState
+        { rules = M.empty
+        , ids   = [0..]
+        }

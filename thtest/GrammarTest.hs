@@ -2,7 +2,8 @@
 {-# LANGUAGE PackageImports #-}
 
 module GrammarTest where
-import Grammar2
+import Grammar
+import LR
 --import "monads-fd" Control.Monad.State
 
 {-testGrammar = do
