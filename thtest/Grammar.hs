@@ -101,8 +101,6 @@ data Any t where
 newtype RId s a = RId Id
   deriving Show
 type    Id      = Int
---(=?=) :: RId s a -> RId s b -> Bool
---RId a =?= RId b = a == b
 
 data GrammarState s = GrammarState
     { rules  :: Map (Any (RId s)) (Any (Rule s))
@@ -165,7 +163,7 @@ nextId = do
     put st {ids = tail (ids st)}
     return i
 
-addRule :: Show s => Rule s a -> Grammar s (RId s a)
+addRule :: Rule s a -> Grammar s (RId s a)
 addRule r = do
     i  <- nextId
     st <- get
@@ -177,11 +175,11 @@ getRule i = do
     Any r <- fromJust <$> M.lookup (Any i) <$> gets rules
     return $ unsafeCoerce r -- should be a safe hack
 
-mkRule :: (Show s, To Rule s a p) => p -> Grammar s (RId s a)
+mkRule :: To Rule s a p => p -> Grammar s (RId s a)
 mkRule = addRule . to
 
---getRules :: Show s => Grammar s [Any (IdRule s)]
---getRules = map (\(i, Any r) -> Any (IdRule (RId i) r)) <$> M.toList <$> gets rules
+getRules :: Grammar s [Any (IdRule s)]
+getRules = map (\(Any i, Any r) -> Any (IdRule i (unsafeCoerce r))) <$> M.toList <$> gets rules
 
 evalGrammar :: Grammar s a -> a
 evalGrammar = flip evalState def

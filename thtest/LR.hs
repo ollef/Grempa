@@ -116,24 +116,44 @@ data Action
     | Accept
     | Error
 
-slr :: Grammar s (RId s a) -> Grammar s ([(Int, Action)], [(Int, Int)])
+type ActionTable s = Map Int (Map s Action)
+type GotoTable   s = Map Int (Map (Any (RId s)) Int)
+
+slr :: (Ord s, Show s)
+    => Grammar s (RId s a)
+    -> Grammar s (ActionTable s, GotoTable s)
 slr g = do
-    --is <- S.toList <$> g >>= items
+    g' <- augment g
+    c  <- flip zip [0..] <$> S.toList <$> items g'
+    let cm = M.fromList c
     undefined
-    
-  --where
-    --state 
-    
-{-
-first :: (Show s, Ord s) => RId s a -> Grammar s (Set (Terminal s))
+  where
+    state :: (Int, Set (Item s))
+          -> Map (Set (Item s)) Int
+          -> Grammar s (Int, [s, Action])
+    state (i, s) m = do
+        let is = S.toList s
+        
+      where
+        aux i = do
+            a <- nextAtom i
+            case a of
+                ATerminal TEmpty
+                ATerminal a -> do
+                    g <- goto i (Any a)
+                    let j = M.lookup g m
+                    return $ shift j
+                _ -> Nothing
+                    
+first :: Ord s => RId s a -> Grammar s (Set (Terminal s))
 first i = do
   r <- getRule i
   firstR r
 
-firstR :: (Show s, Ord s) => Rule s a -> Grammar s (Set (Terminal s))
+firstR :: Ord s => Rule s a -> Grammar s (Set (Terminal s))
 firstR (Rule ss) = S.unions <$> mapM firstS ss
 
-firstS :: (Show s, Ord s) => Seq s a -> Grammar s (Set (Terminal s))
+firstS :: Ord s => Seq s a -> Grammar s (Set (Terminal s))
 firstS s = case s of
     SOne a    -> firstA a
     SFun _ sf -> firstS sf
@@ -144,42 +164,42 @@ firstS s = case s of
             then S.union fas' <$> firstS ss
             else return  fas'
 
-firstA :: (Show s, Ord s) => Atom s a -> Grammar s (Set (Terminal s))
+firstA :: Ord s => Atom s a -> Grammar s (Set (Terminal s))
 firstA a = case a of
     ARule r -> do
         Rule ss <- getRule r
         S.unions <$> mapM firstS ss
     ATerminal t -> return $ S.singleton t
 
-follow :: (Show s, Ord s) => RId s a -> Grammar s (Set (Terminal s))
+follow :: Ord s => RId s a -> Grammar s (Set (Terminal s))
 follow i = do
     rs <- getRules
-    S.unions <$> mapM (followR i) rs
+    S.unions <$> mapM (followR (Any i)) rs
 
-followR :: (Show s, Ord s) => RId s a -> Any IdRule s -> Grammar s (Set (Terminal s))
+followR :: Ord s => Any (RId s) -> Any (IdRule s) -> Grammar s (Set (Terminal s))
 followR i (Any (IdRule ri (Rule ss))) = do
     b <- or <$> mapM (`endsIn` i) ss
-    rest <- if not (ri =?= i) && b then follow ri else return S.empty
+    rest <- if not (Any ri == i) && b then follow ri else return S.empty
     S.union rest <$> S.unions <$> mapM (followS i) ss
 
-endsIn :: (Show s, Ord s) => Seq s a -> RId s b -> Grammar s Bool
+endsIn :: Ord s => Seq s a -> Any (RId s) -> Grammar s Bool
 endsIn s i = case s of
-    SOne (ARule r) | i =?= r -> return True
+    SOne (ARule r) | i == Any r -> return True
     SOne _    -> return False
     SFun _ sf -> endsIn sf i
-    ARule r :~: ss | i =?= r -> do
+    ARule r :~: ss | i == Any r -> do
         fas <- firstS ss
         if S.member TEmpty fas
             then return True
             else endsIn ss i
     _ :~: ss -> endsIn ss i
 
-followS :: (Show s, Ord s) => RId s a -> Seq s b -> Grammar s (Set (Terminal s))
+followS :: Ord s => Any (RId s) -> Seq s b -> Grammar s (Set (Terminal s))
 followS i s = case s of
     SOne _    -> return S.empty
     SFun _ sf -> followS i sf
-    ARule r :~: ss | i =?= r -> liftM2 S.union (followS i ss)
+    ARule r :~: ss | i == Any r -> liftM2 S.union (followS i ss)
                                               (S.delete TEmpty <$> firstS ss)
     _ :~: ss  -> followS i ss
--}
+
 

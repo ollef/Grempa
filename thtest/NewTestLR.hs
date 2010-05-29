@@ -1,0 +1,231 @@
+{-# LANGUAGE DoRec, PackageImports #-}
+import Control.Applicative
+import qualified Control.Arrow as A
+import "monads-fd" Control.Monad.State
+import "monads-fd" Control.Monad.Reader
+import Data.Map(Map)
+import qualified Data.Map as M
+import Data.Set(Set)
+import qualified Data.Set as S
+import Data.Maybe
+import Data.List
+
+import Debug.Trace
+--import Unsafe.Coerce
+
+import Aux
+import NewTest
+
+-- | Create an augmented grammar with a new start symbol
+augment :: Grammar s (RId s) -> Grammar s (RId s)
+augment g = do
+  rec
+    s <- addRule [[ rule r ]]
+    r <- g
+  return s
+
+-- | Determine what items may be valid productions from an item
+closure :: Set (Item s) -> Set (Item s)
+closure = closure' S.empty
+  where
+    closure' done is =
+        let is' = is S.\\ done
+        in case S.null is' of
+            True  -> done
+            False -> let done' = done `S.union` is'
+                         is''  = S.unions $ map closureI (S.toList is')
+                     in closure' done' is''
+
+    closureI i = case nextAtom i of
+        Just (ARule rid) -> firstItems rid
+        _                -> S.empty
+
+-- | Return the atom to the right of the "dot" in the item
+--   returns Nothing if the dot is rightmost in the item
+nextAtom :: Item s -> Maybe (Atom s)
+nextAtom (Item (RId _ r) prod pos)
+    | pos < length production = Just $ production !! pos
+    | otherwise               = Nothing
+  where
+    production = r !! prod
+
+-- | Get the items with the dot at the beginning from a rule
+firstItems :: RId s -> Set (Item s)
+firstItems rid@(RId _ prods) = S.fromList
+                             $ map (\p -> Item rid p 0) [0..length prods - 1]
+
+-- | Determine the state transitions in the parsing
+goto :: Eq s => Set (Item s) -> Atom s -> Set (Item s)
+goto is x = closure $ setFromJust $ S.map (nextTest x) is
+  where
+    nextTest x i
+      | nextAtom i == Just x = Just i { itPos = itPos i + 1 }
+      | otherwise            = Nothing
+
+-- | The sets of items for a grammar
+itemSets :: (Ord s, Show s) => RId s -> [RId s] -> Set (Set (Item s))
+itemSets rid rids = items' S.empty c1
+  where
+    c1            = S.singleton $ closure $ S.singleton $ Item rid 0 0
+    symbols       = terminals rids ++ nonTerminals rids
+    items' done c = if S.null c' then done' else items' done' c'
+      where
+        gotos   = S.fromList [goto i x | i <- S.toList c, x <- symbols]
+        c'      = gotos S.\\ S.insert S.empty done
+        done'   = done `S.union` c
+
+----------------------------------
+showItemSet :: Show s => Set (Set (Item s)) -> String
+showItemSet s = concat $ map (\x -> show (S.toList x) ++ "\n") ss
+  where ss = S.toList s
+
+getItemSets g = do
+    s <- augment g
+    rs <- gets rules
+    return (showItemSet $ itemSets s  rs)
+----------------------------------
+
+-- | Get all terminals (symbols) from a list of rule IDs
+terminals :: Ord s => [RId s] -> [Atom s]
+terminals = concatMap (\(RId _ rs) -> [ASymbol s | as <- rs, ASymbol s <- as])
+
+-- | Get all non-terminals (variables) from a list of rule IDs
+nonTerminals :: Ord s => [RId s] -> [Atom s]
+nonTerminals = map ARule
+
+-- | Get the first symbols that an atom eats, Nothing means epsilon
+first :: Ord s => Atom s -> Set (Maybe s)
+first = first' S.empty
+
+first' :: Ord s => Set (RId s) -> Atom s -> Set (Maybe s)
+first' done (ASymbol s)       = S.singleton (Just s)
+first' done (ARule rid@(RId _ r)) = case rid `S.member` done of
+    False -> S.unions $ map (firstProd' $ S.insert rid done) r
+    True  -> S.empty
+
+-- | Get the first symbols of a production
+firstProd :: Ord s => Prod s -> Set (Maybe s)
+firstProd = firstProd' S.empty
+
+firstProd' :: Ord s => Set (RId s) -> Prod s -> Set (Maybe s)
+firstProd' done []     = S.singleton Nothing
+firstProd' done (x:[]) = first' done x
+firstProd' done (x:xs) = case Nothing `S.member` fx of
+    True  -> S.union fx' (firstProd' done xs)
+    False -> fx'
+  where
+    fx  = first' done x
+    fx' = S.delete Nothing fx
+
+-- | Get all symbols that can follow a rule, Nothing means right end marker
+follow :: Ord s => RId s -> RId s -> [RId s] -> Set (Maybe s)
+follow = follow' S.empty
+
+follow' :: Ord s => Set (RId s) -> RId s -> RId s -> [RId s] -> Set (Maybe s)
+follow' done rid startrid rids = case rid `S.member` done of
+    True  -> S.empty
+    False -> S.unions $
+        (if rid == startrid then S.singleton Nothing else S.empty) :
+        [followProd prod a | a@(RId _ prods) <- rids, prod <- prods]
+  where
+    followProd []       a = S.empty
+    followProd (b:beta) a
+        | b == ARule rid = case Nothing `S.member` firstbeta of
+            True  -> follow' (S.insert rid done)
+                             a startrid rids `S.union` rest
+            False -> rest
+        | otherwise      = followProd beta a
+      where
+        firstbeta = firstProd beta
+        rest      = S.delete Nothing firstbeta
+
+data Action
+    = Shift  Int
+    | Reduce Int (Int, Int)
+    | Accept
+    | Error
+  deriving Show
+
+type ActionTable s = Map (Int, Maybe s)   Action
+type GotoTable   s = Map (Int, Int) Int
+
+type SLR s a = Reader (SLRState s) a
+data SLRState s = SLRState
+    {
+      slrItemSets :: Map (Set (Item s))   Int
+    }
+
+slrLookup :: (Ord a, Show a) => a -> (SLRState s -> Map a Int) -> SLR s Int
+slrLookup x f = fromJust <$> M.lookup x <$> asks f
+
+askItemSet :: (Ord s, Show s) => Set (Item s) -> SLR s (Maybe Int)
+askItemSet x = M.lookup x <$> asks slrItemSets
+
+slr :: (Ord s, Show s) => Grammar s (RId s) -> Grammar s (ActionTable s, GotoTable s,Int)
+slr g = do
+    g' <- augment g
+    rs <- gets rules
+    let c   = S.toList $ itemSets g' rs
+        cis = M.fromList $ zip c [0..]
+        slrs = SLRState {slrItemSets = cis}
+        as  = M.unions [runReader (actions i g' rs) slrs | i <- c]
+        gs  = M.unions [runReader (gotos   i    rs) slrs | i <- c]
+        start = Item g' 0 0
+        startState = snd $ fromJust
+                         $ find (\(c, _) -> start `S.member` c) (M.toList cis)
+    return (as, gs, startState)
+
+gotos :: (Ord s, Show s) => Set (Item s) -> [RId s] -> SLR s (GotoTable s)
+gotos items rules = do
+    Just i <- askItemSet items
+    M.fromList <$> catMaybes <$> sequence
+        [do j <- askItemSet (goto items a)
+            return $ case j of
+                Nothing -> Nothing
+                Just j  -> Just ((i, ai), j)
+          | a@(ARule (RId ai _)) <- nonTerminals rules]
+
+
+actions :: (Ord s, Show s)
+        => Set (Item s) -> RId s -> [RId s] -> SLR s (ActionTable s)
+actions items start rules = do
+    Just i <- askItemSet items
+    M.fromList
+        <$> concat
+        <$> sequence
+            [map (A.first ((,) i)) <$> actions' it | it <- S.toList items]
+  where
+    --actions' :: Item s -> SLR s [(Maybe s, Action)]
+    actions' item@Item {itRId = rid@(RId ri _)} = case nextAtom item of
+        Just a@(ASymbol s) -> do
+            j <- askItemSet $ goto items a
+            case j of
+                Just j  -> return [(Just s, Shift j)]
+                Nothing -> return []
+        Nothing
+            | rid /= start -> do
+                let as = S.toList $ follow rid start rules
+                return [(a, Reduce ri (itProd item, length (getItProd item)))
+                       | a <- as]
+            | otherwise     -> return [(Nothing, Accept)]
+        _ -> return []
+
+driver :: (Ord s, Show s) => (ActionTable s, GotoTable s, Int) -> [s] -> Bool
+driver (action, goto, start) input = driver' [start] (map Just input ++ [Nothing])
+  where
+    driver' stack@(s:_) (a:rest) = trace (show stack ++ "," ++ show (a:rest))
+      $ case fromJust $ M.lookup (s, a) action of
+        Shift t -> driver' (t : stack) rest
+        Reduce rule (prod, len) -> driver' (got : stack') (a : rest)
+          where
+            stack'@(t:_) = drop len stack
+            got          = case M.lookup (t, rule) goto of
+                Just i  -> i
+                Nothing -> error $ "goto " ++ show t ++ " " ++ show rule
+        Accept -> True
+        _      -> False
+
+testDriver g inp = do
+    x <- slr g
+    return (driver x inp)
+
