@@ -26,24 +26,18 @@ augment g = do
 
 -- | Determine what items may be valid productions from an item
 closure :: Set (Item s) -> Set (Item s)
-closure = closure' S.empty
+closure = recTraverseG closure'
   where
-    closure' done is =
-        let is' = is S.\\ done
-        in case S.null is' of
-            True  -> done
-            False -> let done' = done `S.union` is'
-                         is''  = S.unions $ map closureI (S.toList is')
-                     in closure' done' is''
-
-    closureI i = case nextAtom i of
-        Just (ARule rid) -> firstItems rid
+    closure' is = (is `S.union` res, res)
+      where res = S.unions $ map closureI (S.toList is)
+    closureI i = case nextSymbol i of
+        Just (SRule rid) -> firstItems rid
         _                -> S.empty
 
 -- | Return the atom to the right of the "dot" in the item
 --   returns Nothing if the dot is rightmost in the item
-nextAtom :: Item s -> Maybe (Atom s)
-nextAtom (Item (RId _ r) prod pos)
+nextSymbol :: Item s -> Maybe (Symbol s)
+nextSymbol (Item (RId _ r) prod pos)
     | pos < length production = Just $ production !! pos
     | otherwise               = Nothing
   where
@@ -55,24 +49,22 @@ firstItems rid@(RId _ prods) = S.fromList
                              $ map (\p -> Item rid p 0) [0..length prods - 1]
 
 -- | Determine the state transitions in the parsing
-goto :: Eq s => Set (Item s) -> Atom s -> Set (Item s)
+goto :: Eq s => Set (Item s) -> Symbol s -> Set (Item s)
 goto is x = closure $ setFromJust $ S.map (nextTest x) is
   where
     nextTest x i
-      | nextAtom i == Just x = Just i { itPos = itPos i + 1 }
+      | nextSymbol i == Just x = Just i { itPos = itPos i + 1 }
       | otherwise            = Nothing
 
 -- | The sets of items for a grammar
 itemSets :: (Ord s, Show s) => RId s -> [RId s] -> Set (Set (Item s))
-itemSets rid rids = items' S.empty c1
+itemSets rid rids = recTraverseG itemSets' c1
   where
     c1            = S.singleton $ closure $ S.singleton $ Item rid 0 0
     symbols       = terminals rids ++ nonTerminals rids
-    items' done c = if S.null c' then done' else items' done' c'
+    itemSets' c   = (c `S.union` gotos, gotos)
       where
         gotos   = S.fromList [goto i x | i <- S.toList c, x <- symbols]
-        c'      = gotos S.\\ S.insert S.empty done
-        done'   = done `S.union` c
 
 ----------------------------------
 showItemSet :: Show s => Set (Set (Item s)) -> String
@@ -81,25 +73,24 @@ showItemSet s = concat $ map (\x -> show (S.toList x) ++ "\n") ss
 
 getItemSets g = do
     s <- augment g
-    rs <- gets rules
-    return (showItemSet $ itemSets s  rs)
+    return $ showItemSet $ itemSets s (rules s)
 ----------------------------------
 
 -- | Get all terminals (symbols) from a list of rule IDs
-terminals :: Ord s => [RId s] -> [Atom s]
-terminals = concatMap (\(RId _ rs) -> [ASymbol s | as <- rs, ASymbol s <- as])
+terminals :: Ord s => [RId s] -> [Symbol s]
+terminals = concatMap (\(RId _ rs) -> [STerm s | as <- rs, STerm s <- as])
 
 -- | Get all non-terminals (variables) from a list of rule IDs
-nonTerminals :: Ord s => [RId s] -> [Atom s]
-nonTerminals = map ARule
+nonTerminals :: Ord s => [RId s] -> [Symbol s]
+nonTerminals = map SRule
 
 -- | Get the first symbols that an atom eats, Nothing means epsilon
-first :: Ord s => Atom s -> Set (Maybe s)
+first :: Ord s => Symbol s -> Set (Maybe s)
 first = first' S.empty
 
-first' :: Ord s => Set (RId s) -> Atom s -> Set (Maybe s)
-first' done (ASymbol s)       = S.singleton (Just s)
-first' done (ARule rid@(RId _ r)) = case rid `S.member` done of
+first' :: Ord s => Set (RId s) -> Symbol s -> Set (Maybe s)
+first' done (STerm s)       = S.singleton (Just s)
+first' done (SRule rid@(RId _ r)) = case rid `S.member` done of
     False -> S.unions $ map (firstProd' $ S.insert rid done) r
     True  -> S.empty
 
@@ -130,7 +121,7 @@ follow' done rid startrid rids = case rid `S.member` done of
   where
     followProd []       a = S.empty
     followProd (b:beta) a
-        | b == ARule rid = case Nothing `S.member` firstbeta of
+        | b == SRule rid = case Nothing `S.member` firstbeta of
             True  -> follow' (S.insert rid done)
                              a startrid rids `S.union` rest
             False -> rest
@@ -164,8 +155,8 @@ askItemSet x = M.lookup x <$> asks slrItemSets
 slr :: (Ord s, Show s) => Grammar s (RId s) -> Grammar s (ActionTable s, GotoTable s,Int)
 slr g = do
     g' <- augment g
-    rs <- gets rules
-    let c   = S.toList $ itemSets g' rs
+    let rs = rules g'
+        c   = S.toList $ itemSets g' rs
         cis = M.fromList $ zip c [0..]
         slrs = SLRState {slrItemSets = cis}
         as  = M.unions [runReader (actions i g' rs) slrs | i <- c]
@@ -183,7 +174,7 @@ gotos items rules = do
             return $ case j of
                 Nothing -> Nothing
                 Just j  -> Just ((i, ai), j)
-          | a@(ARule (RId ai _)) <- nonTerminals rules]
+          | a@(SRule (RId ai _)) <- nonTerminals rules]
 
 
 actions :: (Ord s, Show s)
@@ -196,8 +187,8 @@ actions items start rules = do
             [map (A.first ((,) i)) <$> actions' it | it <- S.toList items]
   where
     --actions' :: Item s -> SLR s [(Maybe s, Action)]
-    actions' item@Item {itRId = rid@(RId ri _)} = case nextAtom item of
-        Just a@(ASymbol s) -> do
+    actions' item@Item {itRId = rid@(RId ri _)} = case nextSymbol item of
+        Just a@(STerm s) -> do
             j <- askItemSet $ goto items a
             case j of
                 Just j  -> return [(Just s, Shift j)]

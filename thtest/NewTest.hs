@@ -7,13 +7,15 @@ import qualified Data.Map as M
 import Data.Set(Set)
 import qualified Data.Set as S
 
+import Aux
+
 
 type Rule s = [Prod s]
-type Prod s = [Atom s]
+type Prod s = [Symbol s]
 
-data Atom s
-    = ASymbol s
-    | ARule (RId s)
+data Symbol s
+    = STerm s
+    | SRule (RId s)
   deriving (Show, Eq, Ord)
 
 data RId s = RId {rId :: Int, rIdRule :: Rule s}
@@ -44,8 +46,15 @@ instance Show s => Show (Item s) where
 
 data GrammarState s = GrammarState
     { ids   :: [Int]
-    , rules :: [RId s]
     }
+
+rules :: RId s -> [RId s]
+rules = S.toList . recTraverseG rules' . S.singleton
+  where
+    rules' rs     = (res `S.union` rs, res)
+      where
+        res = S.unions $ map aux (S.toList rs)
+    aux (RId i r) = S.fromList [rid | p <- r, SRule rid <- p]
 
 type Grammar s a = State (GrammarState s) a
 
@@ -54,23 +63,22 @@ addRule rule = do
     st <- get
     let i : is = ids st
         rid    = RId i rule
-    put st {ids = is, rules = rid : rules st}
-    return $ rid
+    put st {ids = is}
+    return rid
 
 evalGrammar :: Grammar s a -> a
 evalGrammar = flip evalState def
   where
     def = GrammarState
         { ids   = [0..]
-        , rules = []
         }
 showGrammar :: Show s => Grammar s (RId s) -> String
 showGrammar g = show r
   where
     RId _ r = evalGrammar g
 
-sym    = ASymbol
-rule   = ARule
+sym    = STerm
+rule   = SRule
 
 e = do
     rec
