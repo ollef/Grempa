@@ -15,12 +15,14 @@ import Debug.Trace
 
 import Aux
 import NewTest
+import qualified NewTestTyped as T
+import NewTestUntyped
 
 -- | Create an augmented grammar with a new start symbol
-augment :: Grammar s (RId s) -> Grammar s (RId s)
+augment :: T.Grammar s (T.RId s a) -> T.Grammar s (T.RId s a)
 augment g = do
   rec
-    s <- addRule [[ rule r ]]
+    s <- T.addRule [T.rule r T..$. id]
     r <- g
   return s
 
@@ -37,11 +39,10 @@ closure = recTraverseG closure'
 -- | Return the atom to the right of the "dot" in the item
 --   returns Nothing if the dot is rightmost in the item
 nextSymbol :: Item s -> Maybe (Symbol s)
-nextSymbol (Item (RId _ r) prod pos)
-    | pos < length production = Just $ production !! pos
+nextSymbol i@(Item rid _ pos)
+    | pos < length prod = Just $ prod !! pos
     | otherwise               = Nothing
-  where
-    production = r !! prod
+  where prod = getItProd i
 
 -- | Get the items with the dot at the beginning from a rule
 firstItems :: RId s -> Set (Item s)
@@ -72,11 +73,11 @@ showItemSet s = concat $ map (\x -> show (S.toList x) ++ "\n") ss
   where ss = S.toList s
 
 getItemSets g = do
-    s <- augment g
+    s <- unType <$> augment g
     return $ showItemSet $ itemSets s (rules s)
 ----------------------------------
 
--- | Get all terminals (symbols) from a list of rule IDs
+-- | Get all terminals (input symbols) from a list of rule IDs
 terminals :: Ord s => [RId s] -> [Symbol s]
 terminals = concatMap (\(RId _ rs) -> [STerm s | as <- rs, STerm s <- as])
 
@@ -84,7 +85,7 @@ terminals = concatMap (\(RId _ rs) -> [STerm s | as <- rs, STerm s <- as])
 nonTerminals :: Ord s => [RId s] -> [Symbol s]
 nonTerminals = map SRule
 
--- | Get the first symbols that an atom eats, Nothing means epsilon
+-- | Get the first symbols that a symbol eats, Nothing means epsilon
 first :: Ord s => Symbol s -> Set (Maybe s)
 first = first' S.empty
 
@@ -152,9 +153,9 @@ slrLookup x f = fromJust <$> M.lookup x <$> asks f
 askItemSet :: (Ord s, Show s) => Set (Item s) -> SLR s (Maybe Int)
 askItemSet x = M.lookup x <$> asks slrItemSets
 
-slr :: (Ord s, Show s) => Grammar s (RId s) -> Grammar s (ActionTable s, GotoTable s,Int)
+slr :: (Ord s, Show s) => T.Grammar s (T.RId s a) -> T.Grammar s (ActionTable s, GotoTable s,Int)
 slr g = do
-    g' <- augment g
+    g' <- unType <$> augment g
     let rs = rules g'
         c   = S.toList $ itemSets g' rs
         cis = M.fromList $ zip c [0..]
@@ -201,22 +202,30 @@ actions items start rules = do
             | otherwise     -> return [(Nothing, Accept)]
         _ -> return []
 
-driver :: (Ord s, Show s) => (ActionTable s, GotoTable s, Int) -> [s] -> Bool
-driver (action, goto, start) input = driver' [start] (map Just input ++ [Nothing])
+data ReductionTree s
+    = RTReduce Int Int [ReductionTree s]
+    | RTTerm (Maybe s)
+  deriving Show
+
+driver :: (Ord s, Show s) => (ActionTable s, GotoTable s, Int) -> [s] -> [ReductionTree s]
+driver (action, goto, start) input = driver' [start] (map Just input ++ [Nothing]) []
   where
-    driver' stack@(s:_) (a:rest) = trace (show stack ++ "," ++ show (a:rest))
+    driver' stack@(s:_) (a:rest) rt = trace (show stack ++ "," ++ show (a:rest))
       $ case fromJust $ M.lookup (s, a) action of
-        Shift t -> driver' (t : stack) rest
-        Reduce rule (prod, len) -> driver' (got : stack') (a : rest)
+        Shift t -> driver' (t : stack) rest (RTTerm a : rt)
+        Reduce rule (prod, len) -> driver' (got : stack') (a : rest) rt'
           where
             stack'@(t:_) = drop len stack
             got          = case M.lookup (t, rule) goto of
                 Just i  -> i
                 Nothing -> error $ "goto " ++ show t ++ " " ++ show rule
-        Accept -> True
-        _      -> False
+            rt' = RTReduce rule prod (take len rt) : drop len rt
+        Accept -> rt
+        _      -> error "Wrong, wrong, absolutely briming over with wrongability!"
 
 testDriver g inp = do
     x <- slr g
     return (driver x inp)
 
+test g = do
+    unType <$> g
