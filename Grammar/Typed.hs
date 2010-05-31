@@ -1,5 +1,5 @@
 {-# LANGUAGE GADTs, DoRec, PackageImports #-}
-module NewTestTyped where
+module Typed where
 
 import Control.Applicative
 import "monads-fd" Control.Monad.State

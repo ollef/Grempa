@@ -1,12 +1,12 @@
 {-# LANGUAGE GADTs, DoRec, PackageImports #-}
-module NewTestUntyped where
+module Untyped where
 
 import Control.Applicative
 import "monads-fd" Control.Monad.State
 import qualified Data.Map as M
 import Data.Map(Map)
 
-import qualified NewTestTyped as T
+import qualified Typed as T
 
 data Item s where
     Item :: { itRId  :: RId s

@@ -1,4 +1,5 @@
 {-# LANGUAGE DoRec, PackageImports #-}
+module LR where
 import Control.Applicative
 import qualified Control.Arrow as A
 import "monads-fd" Control.Monad.State
@@ -14,9 +15,18 @@ import Debug.Trace
 --import Unsafe.Coerce
 
 import Aux
-import NewTest
-import qualified NewTestTyped as T
-import NewTestUntyped
+import qualified Typed as T
+import Untyped
+
+-- Get all rules from a grammar (recursively)
+rules :: Ord s => RId s -> [RId s]
+rules = S.toList . recTraverseG rules' . S.singleton
+  where
+    rules' rs     = (res `S.union` rs, res)
+      where
+        res = S.unions $ map aux (S.toList rs)
+    aux (RId i r) = S.fromList [rid | p <- r, SRule rid <- p]
+
 
 -- | Create an augmented grammar with a new start symbol
 augment :: T.Grammar s (T.RId s a) -> T.Grammar s (T.RId s a)
