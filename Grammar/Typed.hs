@@ -94,15 +94,18 @@ instance (Data a, Ord a) => Ord (CSym a) where
         True  -> EQ
         False -> x `compare` y
 
-infixr 5 .#.
-infixr 5 .$.
-(.#.) = PSeq
-p .$. f = PSeq p (PEnd f)
+infixl 5 .#.
+--(.#.) :: Symbol s b -> Prod s (b -> a) -> Prod s a
+(.#.) = flip PSeq
+infixl 5 .$.
+--(.$.) :: (Typeable a, Typeable b) => Symbol s b -> (b -> a) -> Prod s a
+f .$. p = PSeq p $ PEnd f
 
 sym = STerm
 rule = SRule
 
 -----------------------------
+
 data E = E :+: E
        | E :*: E
        | Var
@@ -111,12 +114,12 @@ data E = E :+: E
 e :: Grammar Char (RId Char E)
 e = do
     rec
-      e  <- addRule [rule e .#. sym '+' .#. rule t .$. \x _ y -> x :+: y
-                    ,rule t .$. id]
-      t  <- addRule [rule t .#. sym '*' .#. rule f .$. \x _ y -> x :*: y
-                    ,rule f .$. id]
-      f  <- addRule [sym '(' .#. rule e .#. sym ')' .$. \_ e _ -> e
-                    ,sym 'x' .$. const Var]
+      e  <- addRule [(\x _ y -> x :+: y) .$. rule e .#. sym '+' .#. rule t
+                    ,id                  .$. rule t]
+      t  <- addRule [(\x _ y -> x :*: y) .$. rule t .#. sym '*' .#. rule f
+                    ,id                  .$. rule f]
+      f  <- addRule [(\_ e _ -> e)       .$. sym '(' .#. rule e .#. sym ')'
+                    ,const Var           .$. sym 'x']
     return e
 
 data Sym = Ident String
@@ -134,12 +137,22 @@ data E1 = E1 :++: E1
 e1 :: Grammar Sym (RId Sym E1)
 e1 = do
     rec
-      e  <- addRule [rule e .#. sym Plus  .#. rule t .$. \x _ y -> x :++: y
-                    ,rule t .$. id]
-      t  <- addRule [rule t .#. sym Times .#. rule f .$. \x _ y -> x :**: y
-                    ,rule f .$. id]
-      f  <- addRule [sym LParen .#. rule e .#. sym RParen .$. \_ e _ -> e
-                    ,sym (Ident "") .$. \(Ident x) -> E1Var x]
+      e  <- addRule [(\x _ y -> x :++: y) .$. rule e .#. sym Plus  .#. rule t
+                    ,id                   .$. rule t]
+      t  <- addRule [(\x _ y -> x :**: y) .$. rule t .#. sym Times .#. rule f
+                    ,id                   .$. rule f]
+      f  <- addRule [(\_ e _ -> e)        .$. sym LParen .#. rule e .#. sym RParen
+                    ,(\(Ident x) -> E1Var x).$. sym (Ident "")]
     return e
 
 e1inp = [Ident "x",Times,Ident "y",Times,LParen,Ident "x1",Plus,Ident "y1",RParen]
+
+
+
+test :: Grammar Char (RId Char Int)
+test = do
+    rec
+      x <- addRule [(\y (Just z) -> y + z) .$. rule y .#. rule z]
+      y <- addRule [const 1                .$. sym '1']
+      z <- addRule [const (Just 1)         .$. sym '2']
+    return x

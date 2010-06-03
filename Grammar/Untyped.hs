@@ -56,7 +56,8 @@ unType c = second snd . flip runState (M.empty, M.empty) . unTypeR c
                                   (map T.getFun r)
                 rec
                   put (M.insert i res rids, funs `M.union` newfuns)
-                  res <- RId i <$> mapM (unTypeP c) r
+                  --- haxx
+                  res <- RId i <$> mapM (\x -> reverse <$> unTypeP c x) r
                 return res
     unTypeP :: (s -> s') -> T.Prod s a -> State (Map Int (RId s'), ProdFuns) (Prod s')
     unTypeP c p = case p of

@@ -1,3 +1,6 @@
 LALR
 QuickCheck
 Skönare syntax (med lite klasser)
+Försöka få bort rev?
+TH - tables som görs under compile time
+deriving read
