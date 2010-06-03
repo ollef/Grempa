@@ -1,30 +1,64 @@
-{-# LANGUAGE GADTs, DoRec, PackageImports #-}
+{-# LANGUAGE GADTs, DoRec, DeriveDataTypeable, PackageImports #-}
 module Typed where
 
 import Control.Applicative
 import "monads-fd" Control.Monad.State
+import Data.Data
+import Data.Dynamic
+import Data.Function
+import Data.List
+import Data.Maybe
+
+import qualified Data.Set as S
+import Data.Set(Set)
 
 type Rule s a = [Prod s a]
 
+proddy :: (Typeable s, Typeable a) => Rule s a -> Int -> Prod s a
+proddy = (!!)
+
 -- Inspired by ChristmasTree
-data Prod s a where
+data Prod s' a' where
     PSeq :: Symbol s b -> Prod s (b -> a) -> Prod s a
-    PEnd :: a -> Prod s a
+    PEnd :: Typeable a
+         => a -> Prod s a
+  deriving Typeable
 
-instance Functor (Prod s) where
-    fmap f (PSeq s p) = PSeq s $ fmap (f . ) p
-    fmap f (PEnd x)   = PEnd $ f x
+getFun :: Prod s a -> Dynamic
+getFun (PSeq _ p) = getFun p
+getFun (PEnd f)   = toDyn f
 
---instance Applicative (Prod s) where
-    --pure x = PEnd x
-    --PSeq s p <*> q = PSeq s (p <*> q)
-    --PSeq s p <*> q        = PSeq s (PSeq p q)
+getRuleProdFun :: Int -> Int -> RId s a -> Dynamic
+getRuleProdFun rn p = fromJust . flip evalState S.empty . getRule'
+  where
+    getRule' :: RId s a -> State (Set Int) (Maybe Dynamic)
+    getRule' rid@(RId i r) = if i == rn
+        then return $ Just $ (getFun $ rIdRule rid !! p)
+        else do
+            done <- get
+            case i `S.member` done of
+                True  -> return Nothing
+                False -> do
+                  put $ S.insert i done
+                  Just <$> head <$> catMaybes <$> mapM getRuleP r
+    getRuleP :: Prod s a -> State (Set Int) (Maybe Dynamic)
+    getRuleP (PSeq s p) = case s of
+        SRule rid -> do
+            x <- getRule' rid
+            case x of
+                Just x  -> return $ Just x
+                Nothing -> getRuleP p
+        _         -> getRuleP p
+    getRuleP _          = return Nothing
 
 data Symbol s a where
     STerm :: s       -> Symbol s s
     SRule :: RId s a -> Symbol s a
 
-data RId s a = RId {rId :: Int, rIdRule :: Rule s a}
+data RId s a where
+  RId :: (Typeable s, Typeable a)
+      => {rId :: Int, rIdRule :: Rule s a} -> RId s a
+  deriving Typeable
 
 data GrammarState s = GrammarState
     { ids   :: [Int]
@@ -32,7 +66,7 @@ data GrammarState s = GrammarState
 
 type Grammar s a = State (GrammarState s) a
 
-addRule :: Rule s a -> Grammar s (RId s a)
+addRule :: (Typeable a, Typeable s) => Rule s a -> Grammar s (RId s a)
 addRule rule = do
     st <- get
     let i : is = ids st
@@ -52,23 +86,59 @@ infixr 5 .$.
 (.#.) = PSeq
 p .$. f = PSeq p (PEnd f)
 
-infixr 4 .|.
-(.|.) = (:)
-
 sym = STerm
 rule = SRule
 
 -----------------------------
-data E = Add E E
-       | Mul E E
+data E = E :+: E
+       | E :*: E
        | Var
+  deriving (Show, Typeable)
 
+e :: Grammar Char (RId Char E)
 e = do
     rec
-      e  <- addRule [rule e .#. sym '+' .#. rule t .$. \x _ y -> Add x y
+      e  <- addRule [rule e .#. sym '+' .#. rule t .$. \x _ y -> x :+: y
                     ,rule t .$. id]
-      t  <- addRule [rule t .#. sym '*' .#. rule f .$. \x _ y -> Mul x y
+      t  <- addRule [rule t .#. sym '*' .#. rule f .$. \x _ y -> x :*: y
                     ,rule f .$. id]
       f  <- addRule [sym '(' .#. rule e .#. sym ')' .$. \_ e _ -> e
                     ,sym 'x' .$. const Var]
     return e
+
+data Sym = Ident String
+         | Plus
+         | Times
+         | LParen
+         | RParen
+  deriving (Eq, Ord, Data, Typeable, Show, Read)
+
+data E1 = E1 :++: E1
+        | E1 :**: E1
+        | E1Var String
+  deriving (Show, Typeable)
+
+e1 :: Grammar Sym (RId Sym E1)
+e1 = do
+    rec
+      e  <- addRule [rule e .#. sym Plus .#. rule t .$. \x _ y -> x :++: y
+                    ,rule t .$. id]
+      t  <- addRule [rule t .#. sym Times .#. rule f .$. \x _ y -> x :**: y
+                    ,rule f .$. id]
+      f  <- addRule [sym LParen .#. rule e .#. sym RParen .$. \_ e _ -> e
+                    ,sym (Ident "") .$. \(Ident x) -> E1Var x]
+    return e
+
+e1inp = [Ident "x",Times,Ident "y",Times,LParen,Ident "x1",Plus,Ident "y1",RParen]
+
+data CSym a where
+    CSym :: {unCSym :: a} -> CSym a
+  deriving (Show, Typeable)
+
+instance Data a => Eq (CSym a) where
+    CSym x == CSym y = ((==) `on` toConstr) x y
+
+instance (Data a, Ord a) => Ord (CSym a) where
+    CSym x `compare` CSym y = case ((==) `on` toConstr) x y of
+        True  -> EQ
+        False -> x `compare` y

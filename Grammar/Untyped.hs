@@ -1,8 +1,10 @@
 {-# LANGUAGE GADTs, DoRec, PackageImports #-}
 module Untyped where
 
+import Control.Arrow
 import Control.Applicative
 import "monads-fd" Control.Monad.State
+import Data.Dynamic
 import qualified Data.Map as M
 import Data.Map(Map)
 
@@ -35,24 +37,32 @@ instance Eq (RId s) where
 instance Ord (RId s) where
     RId i _ `compare` RId j _ = i `compare` j
 
-unType :: T.RId s a -> RId s
-unType = flip evalState M.empty . unTypeR
+type ProdFuns = Map (Int, Int) Dynamic
+-- | Returns an untyped tree representation of a typed grammar
+--   together with a mapping from rule and production number to
+--   a dynamic containing the construction function of the typed
+--   production
+unType :: (s -> s') -> T.RId s a -> (RId s', ProdFuns)
+unType c = second snd . flip runState (M.empty, M.empty) . unTypeR c
   where
-    unTypeR :: T.RId s a -> State (Map Int (RId s)) (RId s)
-    unTypeR (T.RId i r) = do
-        rids <- get
+    unTypeR :: (s -> s') -> T.RId s a -> State (Map Int (RId s'), ProdFuns) (RId s')
+    unTypeR c (T.RId i r) = do
+        (rids, funs) <- get
         case M.lookup i rids of
             Just r  -> return r
             Nothing -> do
-              rec
-                put $ M.insert i res rids
-                res <- RId i <$> mapM unTypeP r
-              return res
-    unTypeP :: T.Prod s a -> State (Map Int (RId s)) (Prod s)
-    unTypeP p = case p of
-        T.PSeq s ps -> liftM2 (:) (unTypeS s) (unTypeP ps)
+                let newfuns = M.fromList
+                            $ zip (zip (repeat i) [0..])
+                                  (map T.getFun r)
+                rec
+                  put (M.insert i res rids, funs `M.union` newfuns)
+                  res <- RId i <$> mapM (unTypeP c) r
+                return res
+    unTypeP :: (s -> s') -> T.Prod s a -> State (Map Int (RId s'), ProdFuns) (Prod s')
+    unTypeP c p = case p of
+        T.PSeq s ps -> liftM2 (:) (unTypeS c s) (unTypeP c ps)
         T.PEnd _    -> return []
-    unTypeS :: T.Symbol s a -> State (Map Int (RId s)) (Symbol s)
-    unTypeS s = case s of
-        T.STerm s -> return $ STerm s
-        T.SRule r -> SRule <$> unTypeR r
+    unTypeS :: (s -> s') -> T.Symbol s a -> State (Map Int (RId s'), ProdFuns) (Symbol s')
+    unTypeS c s = case s of
+        T.STerm s -> return $ STerm (c s)
+        T.SRule r -> SRule <$> unTypeR c r

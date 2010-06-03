@@ -6,7 +6,9 @@ import qualified Data.Set as S
 setFromJust :: Ord a => Set (Maybe a) -> Set a
 setFromJust = S.map fromJust . S.delete Nothing
 
--- | Takes a function returning (result, candidates), then the initial set
+-- | Traverse a recursive data structure without doing the same thing more
+--   than once.
+--   Takes a function returning (result, candidates), then the initial set
 recTraverseG :: (Ord a, Ord b) => (Set a -> (Set b, Set a)) -> Set a -> Set b
 recTraverseG = recTraverseG' S.empty
   where
