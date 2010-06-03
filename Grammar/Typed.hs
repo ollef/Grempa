@@ -81,6 +81,19 @@ evalGrammar = flip evalState def
         { ids   = [0..]
         }
 
+-- | Type for representing symbols only caring about the constructor
+data CSym a where
+    CSym :: {unCSym :: a} -> CSym a
+  deriving (Show, Typeable)
+
+instance Data a => Eq (CSym a) where
+    CSym x == CSym y = ((==) `on` toConstr) x y
+
+instance (Data a, Ord a) => Ord (CSym a) where
+    CSym x `compare` CSym y = case ((==) `on` toConstr) x y of
+        True  -> EQ
+        False -> x `compare` y
+
 infixr 5 .#.
 infixr 5 .$.
 (.#.) = PSeq
@@ -121,7 +134,7 @@ data E1 = E1 :++: E1
 e1 :: Grammar Sym (RId Sym E1)
 e1 = do
     rec
-      e  <- addRule [rule e .#. sym Plus .#. rule t .$. \x _ y -> x :++: y
+      e  <- addRule [rule e .#. sym Plus  .#. rule t .$. \x _ y -> x :++: y
                     ,rule t .$. id]
       t  <- addRule [rule t .#. sym Times .#. rule f .$. \x _ y -> x :**: y
                     ,rule f .$. id]
@@ -130,15 +143,3 @@ e1 = do
     return e
 
 e1inp = [Ident "x",Times,Ident "y",Times,LParen,Ident "x1",Plus,Ident "y1",RParen]
-
-data CSym a where
-    CSym :: {unCSym :: a} -> CSym a
-  deriving (Show, Typeable)
-
-instance Data a => Eq (CSym a) where
-    CSym x == CSym y = ((==) `on` toConstr) x y
-
-instance (Data a, Ord a) => Ord (CSym a) where
-    CSym x `compare` CSym y = case ((==) `on` toConstr) x y of
-        True  -> EQ
-        False -> x `compare` y
