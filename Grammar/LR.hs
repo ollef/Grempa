@@ -13,7 +13,7 @@ import qualified Data.Set as S
 import Data.Maybe
 import Data.List
 
---import Debug.Trace
+import Debug.Trace
 
 import Aux
 import qualified Typed as T
@@ -33,7 +33,7 @@ rules = S.toList . recTraverseG rules' . S.singleton
 augment :: (Typeable s, Typeable a) => T.Grammar s (T.RId s a) -> T.Grammar s (T.RId s a)
 augment g = do
   rec
-    s <- T.addRule [T.rule r T..$. id]
+    s <- T.addRule [id T..$. T.rule r]
     r <- g
   return s
 
@@ -153,7 +153,11 @@ data SLRState s = SLRState
     }
 
 slrLookup :: (Ord a, Show a) => a -> (SLRState s -> Map a Int) -> SLR s Int
-slrLookup x f = fromJust <$> M.lookup x <$> asks f
+slrLookup x f = do
+    r <- M.lookup x <$> asks f
+    case r of
+        Just r -> return r
+        Nothing -> error $ "slrLookup, Nothing" ++ show x
 
 askItemSet :: (Ord s, Show s) => Set (Item s) -> SLR s (Maybe Int)
 askItemSet x = M.lookup x <$> asks slrItemSets
@@ -169,7 +173,7 @@ slr g =
         as  = M.unions [runReader (actions i g rs) slrs | i <- c]
         gs  = M.unions [runReader (gotos   i   rs) slrs | i <- c]
         start = Item g 0 0
-        startState = snd $ fromJust
+        startState = snd $ maybe (error "slr") id
                          $ find (\(c, _) -> start `S.member` c) (M.toList cis)
     in (as, gs, startState)
 
@@ -221,22 +225,22 @@ driver :: (Ord s, Show s)
 driver (action, goto, start) input =
     driver' [start] (map Just input ++ [Nothing]) []
   where
-    driver' stack@(s:_) (a:rest) rt = --trace (show stack ++ "," ++ show (a:rest))
-      case fromJust $ M.lookup (s, a) action of
-        Shift t -> driver' (t : stack) rest (RTTerm a : rt)
-        Reduce rule (prod, len) -> driver' (got : stack') (a : rest) rt'
+    driver' stack@(s:_) (a:rest) rt = --trace (show stack ++ "," ++ show (a:rest) ++ show action ++ show goto)
+      case M.lookup (s, a) action of
+        Just (Shift t) -> driver' (t : stack) rest (RTTerm a : rt)
+        Just (Reduce rule (prod, len)) -> driver' (got : stack') (a : rest) rt'
           where
             stack'@(t:_) = drop len stack
             got          = case M.lookup (t, rule) goto of
                 Just i  -> i
                 Nothing -> error $ "goto " ++ show t ++ " " ++ show rule
             rt' = RTReduce rule prod (take len rt) : drop len rt
-        Accept -> head rt
-        _      -> error "Wrong, wrong, absolutely briming over with wrongability!"
+        Just Accept -> head rt
+        _      -> error $ "Wrong, wrong, absolutely briming over with wrongability! " ++ show (s, a)
 
 rtToTyped :: Typeable s => (s' -> s) -> ProdFuns -> ReductionTree s' -> Dynamic
 rtToTyped unc funs (RTTerm (Just s))     = toDyn (unc s)
-rtToTyped unc funs (RTReduce ri pi tree) = appl fun l
+rtToTyped unc funs (RTReduce ri pi tree) = trace (show (appl fun l)) $ appl fun l
   where
     l             = map (rtToTyped unc funs) (reverse tree)
     appl f []     = f
