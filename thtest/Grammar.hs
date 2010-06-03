@@ -25,7 +25,7 @@ f $::= p = mkRule $ f <$> p
 (+++) :: P s a -> P s b -> P s (a,  b)
 (+++) = (:+:)
 
-rule :: GIdent s a -> P s a
+rule :: GId s a -> P s a
 rule = Rule
 
 symbol :: s -> P s s
@@ -42,6 +42,7 @@ instance Functor (P s) where
 -}
 --------------------------------------------------------------------------
 -- Grammar rules (Parser)
+
 data P s a where
   Symbol :: s -> P s s
   (:|:)  :: P s a -> P s a -> P s a
@@ -90,7 +91,11 @@ mkRule (GEnv env refs) p = GEnv (Ext p env) (Succ refs)
 data GIdent s a = GIdent Integer
   deriving (Show, Eq)
 
-data Binding s = forall p. Binding (GIdent s p) (P s p)
+instance Equals (GId s a) (GId s b) where
+  GId x =?= GId y = x == y
+
+data Binding s where
+  Binding :: GId s p -> P s p -> Binding s
 
 data Bindings s = Bindings
   { bindings :: [Binding s]
