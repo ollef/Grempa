@@ -19,8 +19,9 @@ proddy = (!!)
 -- Inspired by ChristmasTree
 -- Will be built backwards for the functions to not be backwards
 data Prod s' a' where
-    PSeq :: Symbol s b -> Prod s (b -> a) -> Prod s a
-    PEnd :: Typeable a
+    PSeq  :: Symbol s b -> Prod s (b -> a) -> Prod s a
+    PSeqN :: Symbol s b -> Prod s a        -> Prod s a
+    PEnd  :: Typeable a
          => a -> Prod s a
   deriving Typeable
 
@@ -59,7 +60,7 @@ evalGrammar = flip evalState def
 augment :: (Typeable s, Typeable a) => GRId s a -> GRId s a
 augment g = do
   rec
-    s <- rule [id .$. r]
+    s <- rule [id <@> r]
     r <- g
   return s
 
@@ -81,14 +82,18 @@ getRuleProdFun rn p = fromJust . flip evalState S.empty . getRule'
                   put $ S.insert i done
                   Just <$> head <$> catMaybes <$> mapM getRuleP r
     getRuleP :: Prod s a -> State (Set Int) (Maybe Dynamic)
-    getRuleP (PSeq s p) = case s of
-        SRule rid -> do
-            x <- getRule' rid
-            case x of
-                Just x  -> return $ Just x
-                Nothing -> getRuleP p
-        _         -> getRuleP p
-    getRuleP _          = return Nothing
+    getRuleP prod = case prod of
+        PSeq  s p -> work s p
+        PSeqN s p -> work s p
+        _         -> return Nothing
+      where
+        work s p = case s of
+            SRule rid -> do
+                x <- getRule' rid
+                case x of
+                    Just x  -> return $ Just x
+                    Nothing -> getRuleP p
+            _         -> getRuleP p
 
 class ToSym s a where
   type ToSymT s a :: *
@@ -107,14 +112,25 @@ instance ToSym s (Symbol s a) where
   toSym = id
 
 
-infixl 5 <>
-(<>) :: (ToSym s x, ToSymT s x ~ b)
-     => Prod s (b -> a) -> x -> Prod s a
-p <> q = PSeq (toSym q) p
-infixl 5 .$.
-(.$.) :: (ToSym s x, ToSymT s x ~ b, Typeable a, Typeable b)
+infixl 5 #>
+(#>) :: (ToSym s x, ToSymT s x ~ b)
+      => Prod s (b -> a) -> x -> Prod s a
+p #> q = PSeq (toSym q) p
+
+infixl 5 #
+(#) :: (ToSym s x)
+     => Prod s a -> x -> Prod s a
+p # q = PSeqN (toSym q) p
+
+infixl 5 <@>
+(<@>) :: (ToSym s x, ToSymT s x ~ b, Typeable a, Typeable b)
       => (b -> a) -> x -> Prod s a
-f .$. p = PSeq (toSym p) $ PEnd f
+f <@> p = PSeq (toSym p) $ PEnd f
+
+infixl 5 <@
+(<@) :: (ToSym s x, Typeable a)
+     => a -> x -> Prod s a
+f <@ p = PSeqN (toSym p) $ PEnd f
 
 sym = STerm
 rul = SRule
@@ -129,19 +145,16 @@ data E = E :+: E
 e :: GRId Char E
 e = do
     rec
-      e  <- rule [bi (:+:)  .$. e <> '+' <> t
-                 ,id        .$. t
+      e  <- rule [(:+:) <@> e # '+' #> t
+                 ,id    <@> t
                  ]
-      t  <- rule [bi (:*:)  .$. t <> '*' <> f
-                 ,id        .$. f
+      t  <- rule [(:*:) <@> t # '*' #> f
+                 ,id    <@> f
                  ]
-      f  <- rule [mid       .$. '(' <> e <> ')'
-                 ,const Var .$. 'x'
+      f  <- rule [id    <@ '(' #> e # ')'
+                 ,Var   <@ 'x'
                  ]
     return e
-  where
-    bi c x _ y = x `c` y
-    mid _ y _  = y
 
 data Sym = Ident String
          | Plus
@@ -158,16 +171,17 @@ data E1 = E1 :++: E1
 e1 :: GRId Sym E1
 e1 = do
     rec
-      e  <- rule [bi (:++:) .$. e <> Plus  <> t
-                 ,id        .$. t]
-      t  <- rule [bi (:**:) .$. t <> Times <> f
-                 ,id        .$. f]
-      f  <- rule [mid       .$. LParen <> e <> RParen
-                 ,idV       .$. Ident ""]
+      e  <- rule [(:++:) <@> e # Plus  #> t
+                 ,id     <@> t
+                 ]
+      t  <- rule [(:**:) <@> t # Times #> f
+                 ,id     <@> f
+                 ]
+      f  <- rule [id     <@ LParen #> e # RParen
+                 ,idV    <@> Ident ""
+                 ]
     return e
   where
-    bi c x _ y    = x `c` y
-    mid _ y _     = y
     idV (Ident x) = E1Var x
 
 e1inp = [Ident "x",Times,Ident "y",Times,LParen,Ident "x1",Plus,Ident "y1",RParen]
@@ -175,7 +189,7 @@ e1inp = [Ident "x",Times,Ident "y",Times,LParen,Ident "x1",Plus,Ident "y1",RPare
 test :: Grammar Char (RId Char Int)
 test = do
     rec
-      x <- rule [(\y (Just z) -> y + z) .$. y <> z]
-      y <- rule [const 1                .$. '1']
-      z <- rule [const (Just 1)         .$. '2']
+      x <- rule [(\y (Just z) -> y + z) <@> y #> z]
+      y <- rule [const 1                <@> '1']
+      z <- rule [const (Just 1)         <@> '2']
     return x
