@@ -77,8 +77,8 @@ getFun = getFun' []
     getFun' :: [Bool] -> Prod s a -> DynFun
     getFun' as prod = case prod of
         PEnd f    -> DynFun (toDyn f) as
-        PSeq  _ p -> getFun' (as ++ [True]) p
-        PSeqN _ p -> getFun' (as ++ [False]) p
+        PSeq  _ p -> getFun' (True:as) p
+        PSeqN _ p -> getFun' (False:as) p
 
     app f []     = f
     app f (Just a :as) = app (dynApp f a) as
@@ -180,4 +180,11 @@ test = do
       x <- rule [(\y (Just z) -> y + z) <@> y #> z]
       y <- rule [const 1                <@> '1']
       z <- rule [(Just 3)         <@ '2']
+    return x
+
+test2 :: Grammar Char (RId Char [Char])
+test2 = do
+    rec
+      x <- rule [(\a b x -> a:b:x) <@ 'x' #> 'a' #> 'b' #> x
+                ,[]  <@ 'z']
     return x
