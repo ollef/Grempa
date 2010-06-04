@@ -1,4 +1,4 @@
-{-# LANGUAGE DoRec, PackageImports, NoMonomorphismRestriction #-}
+{-# LANGUAGE DoRec, PackageImports, NoMonomorphismRestriction, GADTs, DeriveDataTypeable #-}
 module LR where
 import Control.Applicative
 import qualified Control.Arrow as A
@@ -6,6 +6,7 @@ import "monads-fd" Control.Monad.State
 import "monads-fd" Control.Monad.Reader
 import Data.Data
 import Data.Dynamic
+import Data.Function
 import Data.Map(Map)
 import qualified Data.Map as M
 import Data.Set(Set)
@@ -27,15 +28,6 @@ rules = S.toList . recTraverseG rules' . S.singleton
       where
         res = S.unions $ map aux (S.toList rs)
     aux (RId i r) = S.fromList [rid | p <- r, SRule rid <- p]
-
-
--- | Create an augmented grammar with a new start symbol
-augment :: (Typeable s, Typeable a) => T.Grammar s (T.RId s a) -> T.Grammar s (T.RId s a)
-augment g = do
-  rec
-    s <- T.addRule [id T..$. T.rule r]
-    r <- g
-  return s
 
 -- | Determine what items may be valid productions from an item
 closure :: Set (Item s) -> Set (Item s)
@@ -234,7 +226,7 @@ driver (action, goto, start) input =
             got          = case M.lookup (t, rule) goto of
                 Just i  -> i
                 Nothing -> error $ "goto " ++ show t ++ " " ++ show rule
-            rt' = RTReduce rule prod (take len rt) : drop len rt
+            rt' = RTReduce rule prod (reverse $ take len rt) : drop len rt
         Just Accept -> head rt
         _      -> error $ "Wrong, wrong, absolutely briming over with wrongability! " ++ show (s, a)
 
@@ -242,7 +234,7 @@ rtToTyped :: Typeable s => (s' -> s) -> ProdFuns -> ReductionTree s' -> Dynamic
 rtToTyped unc funs (RTTerm (Just s))     = toDyn (unc s)
 rtToTyped unc funs (RTReduce ri pi tree) = trace (show (appl fun l)) $ appl fun l
   where
-    l             = map (rtToTyped unc funs) (reverse tree)
+    l             = map (rtToTyped unc funs) tree
     appl f []     = f
     appl f (x:xs) = appl (dynApp f x) xs
     fun           = fromJust $ M.lookup (ri, pi) funs
@@ -250,11 +242,24 @@ rtToTyped unc funs (RTReduce ri pi tree) = trace (show (appl fun l)) $ appl fun 
 runSLRG :: (Data s, Typeable s', Typeable a, Ord s', Show s')
        => (s -> s') -> (s' -> s) -> T.Grammar s (T.RId s a) -> [s] -> T.Grammar s a
 runSLRG c unc g inp = do
-    g' <- augment g
+    g' <- T.augment g
     let (unt, funs) = unType c g'
         tables      = slr unt
         res         = driver tables (map c inp)
     return $ fromJust $ fromDynamic $ rtToTyped unc funs res
 
+-- | Type for representing tokens only caring about the constructor
+data CTok a where
+    CTok :: {unCTok :: a} -> CTok a
+  deriving (Show, Typeable)
+
+instance Data a => Eq (CTok a) where
+    CTok x == CTok y = ((==) `on` toConstr) x y
+
+instance (Data a, Ord a) => Ord (CTok a) where
+    CTok x `compare` CTok y = case ((==) `on` toConstr) x y of
+        True  -> EQ
+        False -> x `compare` y
+
 runSLR = runSLRG id id
-runSLRC = runSLRG T.CSym T.unCSym
+runSLRC = runSLRG CTok unCTok
