@@ -3,6 +3,6 @@ konstanttidtables
 TH - tables som görs under compile time
 LALR
 QuickCheck
-Försöka få bort rev?
+profiling - (Försöka få bort rev?)
 deriving read
 v Skönare syntax (med lite klasser)
