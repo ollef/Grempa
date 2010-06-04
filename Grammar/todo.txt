@@ -1,6 +1,8 @@
+markera produktioner som inte ska vara med som resultat
+konstanttidtables
+TH - tables som görs under compile time
 LALR
 QuickCheck
-Skönare syntax (med lite klasser)
 Försöka få bort rev?
-TH - tables som görs under compile time
 deriving read
+v Skönare syntax (med lite klasser)
