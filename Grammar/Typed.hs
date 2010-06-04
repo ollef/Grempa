@@ -18,11 +18,10 @@ proddy = (!!)
 
 -- Inspired by ChristmasTree
 -- Will be built backwards for the functions to not be backwards
-data Prod s' a' where
+data Prod s a where
     PSeq  :: Symbol s b -> Prod s (b -> a) -> Prod s a
     PSeqN :: Symbol s b -> Prod s a        -> Prod s a
-    PEnd  :: Typeable a
-         => a -> Prod s a
+    PEnd  :: Typeable a => a               -> Prod s a
   deriving Typeable
 
 data Symbol s a where
@@ -64,37 +63,26 @@ augment g = do
     r <- g
   return s
 
-getFun :: Prod s a -> Dynamic
-getFun (PSeq _ p) = getFun p
-getFun (PEnd f)   = toDyn f
+data DynFun = DynFun Dynamic [Bool]
 
-getRuleProdFun :: Int -> Int -> RId s a -> Dynamic
-getRuleProdFun rn p = fromJust . flip evalState S.empty . getRule'
+applDynFun :: DynFun -> [Dynamic] -> Dynamic
+applDynFun (DynFun f (b:bs)) (a:as)
+    | b         = applDynFun (DynFun (dynApp f a) bs) as
+    | otherwise = applDynFun (DynFun f bs) as
+applDynFun (DynFun f _) _ = f
+
+getFun :: Prod s a -> DynFun
+getFun = getFun' []
   where
-    getRule' :: RId s a -> State (Set Int) (Maybe Dynamic)
-    getRule' rid@(RId i r) = if i == rn
-        then return $ Just $ (getFun $ rIdRule rid !! p)
-        else do
-            done <- get
-            case i `S.member` done of
-                True  -> return Nothing
-                False -> do
-                  put $ S.insert i done
-                  Just <$> head <$> catMaybes <$> mapM getRuleP r
-    getRuleP :: Prod s a -> State (Set Int) (Maybe Dynamic)
-    getRuleP prod = case prod of
-        PSeq  s p -> work s p
-        PSeqN s p -> work s p
-        _         -> return Nothing
-      where
-        work s p = case s of
-            SRule rid -> do
-                x <- getRule' rid
-                case x of
-                    Just x  -> return $ Just x
-                    Nothing -> getRuleP p
-            _         -> getRuleP p
+    getFun' :: [Bool] -> Prod s a -> DynFun
+    getFun' as prod = case prod of
+        PEnd f    -> DynFun (toDyn f) as
+        PSeq  _ p -> getFun' (as ++ [True]) p
+        PSeqN _ p -> getFun' (as ++ [False]) p
 
+    app f []     = f
+    app f (Just a :as) = app (dynApp f a) as
+    app f (Nothing:as) = app f as
 class ToSym s a where
   type ToSymT s a :: *
   toSym :: a -> Symbol s (ToSymT s a)
@@ -191,5 +179,5 @@ test = do
     rec
       x <- rule [(\y (Just z) -> y + z) <@> y #> z]
       y <- rule [const 1                <@> '1']
-      z <- rule [const (Just 1)         <@> '2']
+      z <- rule [(Just 3)         <@ '2']
     return x

@@ -232,11 +232,9 @@ driver (action, goto, start) input =
 
 rtToTyped :: Typeable s => (s' -> s) -> ProdFuns -> ReductionTree s' -> Dynamic
 rtToTyped unc funs (RTTerm (Just s))     = toDyn (unc s)
-rtToTyped unc funs (RTReduce ri pi tree) = trace (show (appl fun l)) $ appl fun l
+rtToTyped unc funs (RTReduce ri pi tree) = trace (show (T.applDynFun fun l)) $ T.applDynFun fun l
   where
     l             = map (rtToTyped unc funs) tree
-    appl f []     = f
-    appl f (x:xs) = appl (dynApp f x) xs
     fun           = fromJust $ M.lookup (ri, pi) funs
 
 runSLRG :: (Data s, Typeable s', Typeable a, Ord s', Show s')

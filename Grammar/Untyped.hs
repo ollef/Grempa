@@ -37,7 +37,7 @@ instance Eq (RId s) where
 instance Ord (RId s) where
     RId i _ `compare` RId j _ = i `compare` j
 
-type ProdFuns = Map (Int, Int) Dynamic
+type ProdFuns = Map (Int, Int) (T.DynFun)
 -- | Returns an untyped tree representation of a typed grammar
 --   together with a mapping from rule and production number to
 --   a dynamic containing the construction function of the typed
@@ -61,7 +61,8 @@ unType c = second snd . flip runState (M.empty, M.empty) . unTypeR c
                 return res
     unTypeP :: (s -> s') -> T.Prod s a -> State (Map Int (RId s'), ProdFuns) (Prod s')
     unTypeP c p = case p of
-        T.PSeq s ps -> liftM2 (:) (unTypeS c s) (unTypeP c ps)
+        T.PSeq  s ps -> liftM2 (:) (unTypeS c s) (unTypeP c ps)
+        T.PSeqN s ps -> liftM2 (:) (unTypeS c s) (unTypeP c ps)
         T.PEnd _    -> return []
     unTypeS :: (s -> s') -> T.Symbol s a -> State (Map Int (RId s'), ProdFuns) (Symbol s')
     unTypeS c s = case s of
