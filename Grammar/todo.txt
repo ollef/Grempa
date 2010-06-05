@@ -1,4 +1,3 @@
-markera produktioner som inte ska vara med som resultat
 konstanttidtables
 TH - tables som görs under compile time
 LALR
@@ -6,3 +5,4 @@ QuickCheck
 profiling - (Försöka få bort rev?)
 deriving read
 v Skönare syntax (med lite klasser)
+v markera produktioner som inte ska vara med som resultat (gör det snyggare?)

@@ -4,7 +4,6 @@ module Untyped where
 import Control.Arrow
 import Control.Applicative
 import "monads-fd" Control.Monad.State
-import Data.Dynamic
 import qualified Data.Map as M
 import Data.Map(Map)
 
@@ -43,13 +42,13 @@ type ProdFuns = Map (Int, Int) (T.DynFun)
 --   a dynamic containing the construction function of the typed
 --   production
 unType :: (s -> s') -> T.RId s a -> (RId s', ProdFuns)
-unType c = second snd . flip runState (M.empty, M.empty) . unTypeR c
+unType cs = second snd . flip runState (M.empty, M.empty) . unTypeR cs
   where
     unTypeR :: (s -> s') -> T.RId s a -> State (Map Int (RId s'), ProdFuns) (RId s')
     unTypeR c (T.RId i r) = do
         (rids, funs) <- get
         case M.lookup i rids of
-            Just r  -> return r
+            Just x  -> return x
             Nothing -> do
                 let newfuns = M.fromList
                             $ zip (zip (repeat i) [0..])
@@ -66,5 +65,5 @@ unType c = second snd . flip runState (M.empty, M.empty) . unTypeR c
         T.PEnd _    -> return []
     unTypeS :: (s -> s') -> T.Symbol s a -> State (Map Int (RId s'), ProdFuns) (Symbol s')
     unTypeS c s = case s of
-        T.STerm s -> return $ STerm (c s)
+        T.STerm t -> return $ STerm (c t)
         T.SRule r -> SRule <$> unTypeR c r

@@ -31,7 +31,7 @@ makeGraph' from (a:as) = do
               , edges ++ maybe [] (\x -> [(x, n, red__)]) from
               )
         RTReduce rule prod rt -> do
-            (nodes', edges') <- makeGraph' (Just n) (reverse rt)
+            (nodes', edges') <- makeGraph' (Just n) rt
             return
               ( nodes ++ [(n, ("Reduce (" ++ show rule ++ ", " ++ show prod ++ ")", white, Ellipse))] ++ nodes'
               , edges ++ maybe [] (\x -> [(x, n, black)]) from ++ edges'
@@ -47,7 +47,7 @@ shower :: Show s => Maybe s -> String
 shower = maybe "$" show
 
 previewGraphviz :: Show s => [ReductionTree s] -> IO ()
-previewGraphviz = preview . makeGraph . reverse
+previewGraphviz = preview . makeGraph
 
 -- | Skapar en sträng innehållande dot kommandon
 -- jag brukar spara detta innehåll till en fil och sedan köra
@@ -78,4 +78,4 @@ toDotGraph x = graphToDot True
     edgeToAttr (from, to, label) = [Color [label]]
 
 writeTest e = writeFile "test.dot" x
-  where x = toGraphviz $ Typed.evalGrammar $ testDriver Typed.e e
+  where x = toGraphviz $ (:[]) $ fst $ Typed.evalGrammar $ runSLRG id Typed.e e

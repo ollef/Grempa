@@ -2,7 +2,6 @@
 module LR where
 import Control.Applicative
 import qualified Control.Arrow as A
-import "monads-fd" Control.Monad.State
 import "monads-fd" Control.Monad.Reader
 import Data.Data
 import Data.Dynamic
@@ -27,7 +26,7 @@ rules = S.toList . recTraverseG rules' . S.singleton
     rules' rs     = (res `S.union` rs, res)
       where
         res = S.unions $ map aux (S.toList rs)
-    aux (RId i r) = S.fromList [rid | p <- r, SRule rid <- p]
+    aux (RId _ r) = S.fromList [rid | p <- r, SRule rid <- p]
 
 -- | Determine what items may be valid productions from an item
 closure :: Set (Item s) -> Set (Item s)
@@ -42,10 +41,11 @@ closure = recTraverseG closure'
 -- | Return the atom to the right of the "dot" in the item
 --   returns Nothing if the dot is rightmost in the item
 nextSymbol :: Item s -> Maybe (Symbol s)
-nextSymbol i@(Item rid _ pos)
+nextSymbol i
     | pos < length prod = Just $ prod !! pos
     | otherwise               = Nothing
   where prod = getItProd i
+        pos  = itPos i
 
 -- | Get the items with the dot at the beginning from a rule
 firstItems :: RId s -> Set (Item s)
@@ -54,7 +54,7 @@ firstItems rid@(RId _ prods) = S.fromList
 
 -- | Determine the state transitions in the parsing
 goto :: Eq s => Set (Item s) -> Symbol s -> Set (Item s)
-goto is x = closure $ setFromJust $ S.map (nextTest x) is
+goto is s = closure $ setFromJust $ S.map (nextTest s) is
   where
     nextTest x i
       | nextSymbol i == Just x = Just i { itPos = itPos i + 1 }
@@ -66,9 +66,8 @@ itemSets rid rids = recTraverseG itemSets' c1
   where
     c1            = S.singleton $ closure $ S.singleton $ Item rid 0 0
     symbols       = terminals rids ++ nonTerminals rids
-    itemSets' c   = (c `S.union` gotos, gotos)
-      where
-        gotos   = S.fromList [goto i x | i <- S.toList c, x <- symbols]
+    itemSets' c   = (c `S.union` gs, gs)
+      where gs    = S.fromList [goto i x | i <- S.toList c, x <- symbols]
 
 ----------------------------------
 
@@ -85,7 +84,7 @@ first :: Ord s => Symbol s -> Set (Maybe s)
 first = first' S.empty
 
 first' :: Ord s => Set (RId s) -> Symbol s -> Set (Maybe s)
-first' done (STerm s)       = S.singleton (Just s)
+first' _    (STerm s)              = S.singleton (Just s)
 first' done (SRule rid@(RId _ r)) = case rid `S.member` done of
     False -> S.unions $ map (firstProd' $ S.insert rid done) r
     True  -> S.empty
@@ -95,7 +94,7 @@ firstProd :: Ord s => Prod s -> Set (Maybe s)
 firstProd = firstProd' S.empty
 
 firstProd' :: Ord s => Set (RId s) -> Prod s -> Set (Maybe s)
-firstProd' done []     = S.singleton Nothing
+firstProd' _    []     = S.singleton Nothing
 firstProd' done (x:[]) = first' done x
 firstProd' done (x:xs) = case Nothing `S.member` fx of
     True  -> S.union fx' (firstProd' done xs)
@@ -115,7 +114,7 @@ follow' done rid startrid rids = case rid `S.member` done of
         (if rid == startrid then S.singleton Nothing else S.empty) :
         [followProd prod a | a@(RId _ prods) <- rids, prod <- prods]
   where
-    followProd []       a = S.empty
+    followProd []       _ = S.empty
     followProd (b:beta) a
         | b == SRule rid = case Nothing `S.member` firstbeta of
             True  -> follow' (S.insert rid done)
@@ -146,9 +145,9 @@ data SLRState s = SLRState
 
 slrLookup :: (Ord a, Show a) => a -> (SLRState s -> Map a Int) -> SLR s Int
 slrLookup x f = do
-    r <- M.lookup x <$> asks f
-    case r of
-        Just r -> return r
+    res <- M.lookup x <$> asks f
+    case res of
+        Just r  -> return r
         Nothing -> error $ "slrLookup, Nothing" ++ show x
 
 askItemSet :: (Ord s, Show s) => Set (Item s) -> SLR s (Maybe Int)
@@ -158,33 +157,33 @@ askItemSet x = M.lookup x <$> asks slrItemSets
 slr :: (Typeable s, Ord s, Show s)
     => RId s -> (ActionTable s, GotoTable s,Int)
 slr g =
-    let rs = rules g
-        c   = S.toList $ itemSets g rs
-        cis = M.fromList $ zip c [0..]
-        slrs = SLRState {slrItemSets = cis}
-        as  = M.unions [runReader (actions i g rs) slrs | i <- c]
-        gs  = M.unions [runReader (gotos   i   rs) slrs | i <- c]
-        start = Item g 0 0
-        startState = snd $ maybe (error "slr") id
+    let rs         = rules g
+        cs         = S.toList $ itemSets g rs
+        cis        = M.fromList $ zip cs [0..]
+        slrs       = SLRState {slrItemSets = cis}
+        as         = M.unions [runReader (actions i g rs) slrs | i <- cs]
+        gs         = M.unions [runReader (gotos   i   rs) slrs | i <- cs]
+        start      = Item g 0 0
+        startState = snd $ maybe (error "slr: maybe") id
                          $ find (\(c, _) -> start `S.member` c) (M.toList cis)
     in (as, gs, startState)
 
 -- | Create goto table
 gotos :: (Ord s, Show s) => Set (Item s) -> [RId s] -> SLR s (GotoTable s)
-gotos items rules = do
+gotos items rs = do
     Just i <- askItemSet items
     M.fromList <$> catMaybes <$> sequence
         [do j <- askItemSet (goto items a)
             return $ case j of
                 Nothing -> Nothing
-                Just j  -> Just ((i, ai), j)
-          | a@(SRule (RId ai _)) <- nonTerminals rules]
+                Just x  -> Just ((i, ai), x)
+          | a@(SRule (RId ai _)) <- nonTerminals rs]
 
 
 -- | Create action table
 actions :: (Ord s, Show s)
         => Set (Item s) -> RId s -> [RId s] -> SLR s (ActionTable s)
-actions items start rules = do
+actions items start rs = do
     Just i <- askItemSet items
     M.fromList
         <$> concat
@@ -196,11 +195,11 @@ actions items start rules = do
         Just a@(STerm s) -> do
             j <- askItemSet $ goto items a
             case j of
-                Just j  -> return [(Just s, Shift j)]
+                Just x  -> return [(Just s, Shift x)]
                 Nothing -> return []
         Nothing
             | rid /= start -> do
-                let as = S.toList $ follow rid start rules
+                let as = S.toList $ follow rid start rs
                 return [(a, Reduce ri (itProd item, length (getItProd item)))
                        | a <- as]
             | otherwise     -> return [(Nothing, Accept)]
@@ -214,36 +213,44 @@ data ReductionTree s
 
 driver :: (Ord s, Show s)
        => (ActionTable s, GotoTable s, Int) -> [s] -> ReductionTree s
-driver (action, goto, start) input =
+driver (actiont, gotot, start) input =
     driver' [start] (map Just input ++ [Nothing]) []
   where
     driver' stack@(s:_) (a:rest) rt = --trace (show stack ++ "," ++ show (a:rest) ++ show action ++ show goto)
-      case M.lookup (s, a) action of
+      case M.lookup (s, a) actiont of
         Just (Shift t) -> driver' (t : stack) rest (RTTerm a : rt)
         Just (Reduce rule (prod, len)) -> driver' (got : stack') (a : rest) rt'
           where
             stack'@(t:_) = drop len stack
-            got          = case M.lookup (t, rule) goto of
+            got          = case M.lookup (t, rule) gotot of
                 Just i  -> i
                 Nothing -> error $ "goto " ++ show t ++ " " ++ show rule
             rt' = RTReduce rule prod (reverse $ take len rt) : drop len rt
         Just Accept -> head rt
         _      -> error $ "Wrong, wrong, absolutely briming over with wrongability! " ++ show (s, a)
+    driver' _ _ _ = error "driver'"
 
 rtToTyped :: Typeable s => (s' -> s) -> ProdFuns -> ReductionTree s' -> Dynamic
-rtToTyped unc funs (RTTerm (Just s))     = toDyn (unc s)
-rtToTyped unc funs (RTReduce ri pi tree) = trace (show (T.applDynFun fun l)) $ T.applDynFun fun l
+rtToTyped unc _    (RTTerm (Just s))     = toDyn (unc s)
+rtToTyped unc funs (RTReduce r p tree) = trace (show (T.applDynFun fun l)) $ T.applDynFun fun l
   where
     l             = map (rtToTyped unc funs) tree
-    fun           = fromJust $ M.lookup (ri, pi) funs
+    fun           = fromJust $ M.lookup (r, p) funs
+rtToTyped _ _ _ = error "rtToTyped"
 
 runSLRG :: (Data s, Typeable s', Typeable a, Ord s', Show s')
-       => (s -> s') -> (s' -> s) -> T.Grammar s (T.RId s a) -> [s] -> T.Grammar s a
-runSLRG c unc g inp = do
+       => (s -> s') -> T.GRId s a -> [s] -> T.Grammar s (ReductionTree s', ProdFuns)
+runSLRG c g inp = do
     g' <- T.augment g
     let (unt, funs) = unType c g'
         tables      = slr unt
         res         = driver tables (map c inp)
+    return (res, funs)
+
+runSLRGRes :: (Data s, Typeable s', Typeable a, Ord s', Show s')
+       => (s -> s') -> (s' -> s) -> T.GRId s a -> [s] -> T.Grammar s a
+runSLRGRes c unc g inp = do
+    (res, funs) <- runSLRG c g inp
     return $ fromJust $ fromDynamic $ rtToTyped unc funs res
 
 -- | Type for representing tokens only caring about the constructor
@@ -259,5 +266,10 @@ instance (Data a, Ord a) => Ord (CTok a) where
         True  -> EQ
         False -> x `compare` y
 
-runSLR = runSLRG id id
-runSLRC = runSLRG CTok unCTok
+runSLR  :: (Data s, Typeable a, Ord s, Show s)
+        => T.GRId s a -> [s] -> T.Grammar s a
+runSLR  = runSLRGRes id id
+
+runSLRC :: (Data s, Typeable a, Ord s, Show s)
+        => T.GRId s a -> [s] -> T.Grammar s a
+runSLRC = runSLRGRes CTok unCTok

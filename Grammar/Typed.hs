@@ -1,25 +1,17 @@
 {-# LANGUAGE GADTs, DoRec, DeriveDataTypeable, PackageImports, TypeFamilies, FlexibleInstances, MultiParamTypeClasses #-}
 module Typed where
 
-import Control.Applicative
 import "monads-fd" Control.Monad.State
 import Data.Data
 import Data.Dynamic
-import Data.List
-import Data.Maybe
-
-import qualified Data.Set as S
-import Data.Set(Set)
 
 type Rule s a = [Prod s a]
-
-proddy :: (Typeable s, Typeable a) => Rule s a -> Int -> Prod s a
-proddy = (!!)
 
 -- Inspired by ChristmasTree
 -- Will be built backwards for the functions to not be backwards
 data Prod s a where
     PSeq  :: Symbol s b -> Prod s (b -> a) -> Prod s a
+    -- Result does not matter
     PSeqN :: Symbol s b -> Prod s a        -> Prod s a
     PEnd  :: Typeable a => a               -> Prod s a
   deriving Typeable
@@ -40,6 +32,7 @@ data GrammarState s = GrammarState
 type Grammar s a = State (GrammarState s) a
 type GRId s a = Grammar s (RId s a)
 
+-- | Create a new rule for a grammar
 rule :: (Typeable a, Typeable s) => Rule s a -> GRId s a
 rule r = do
     st <- get
@@ -48,6 +41,7 @@ rule r = do
     put st {ids = is}
     return rid
 
+-- | Get the result from a Grammar computation
 evalGrammar :: Grammar s a -> a
 evalGrammar = flip evalState def
   where
@@ -80,9 +74,7 @@ getFun = getFun' []
         PSeq  _ p -> getFun' (True:as) p
         PSeqN _ p -> getFun' (False:as) p
 
-    app f []     = f
-    app f (Just a :as) = app (dynApp f a) as
-    app f (Nothing:as) = app f as
+-- | Class for writing grammars in a nicer syntax
 class ToSym s a where
   type ToSymT s a :: *
   toSym :: a -> Symbol s (ToSymT s a)
@@ -99,31 +91,32 @@ instance ToSym s (Symbol s a) where
   type ToSymT s (Symbol s a) = a
   toSym = id
 
-
-infixl 5 #>
-(#>) :: (ToSym s x, ToSymT s x ~ b)
+-- Combinator functions
+-- | Sequence where the result of the symbol to the right matters
+infixl 5 <#>
+(<#>) :: (ToSym s x, ToSymT s x ~ b)
       => Prod s (b -> a) -> x -> Prod s a
-p #> q = PSeq (toSym q) p
+p <#> q = PSeq (toSym q) p
 
-infixl 5 #
-(#) :: (ToSym s x)
+-- | Sequence where the result of the symbol to the right does not matter
+infixl 5 <#
+(<#) :: (ToSym s x)
      => Prod s a -> x -> Prod s a
-p # q = PSeqN (toSym q) p
+p <# q = PSeqN (toSym q) p
 
+-- | Start grammar where the result of the symbol to the right matters
 infixl 5 <@>
 (<@>) :: (ToSym s x, ToSymT s x ~ b, Typeable a, Typeable b)
       => (b -> a) -> x -> Prod s a
 f <@> p = PSeq (toSym p) $ PEnd f
 
+-- | Start grammar where the result of the symbol to the right does not matter
 infixl 5 <@
 (<@) :: (ToSym s x, Typeable a)
      => a -> x -> Prod s a
 f <@ p = PSeqN (toSym p) $ PEnd f
 
-sym = STerm
-rul = SRule
-
------------------------------
+----------------------------- TEST GRAMMARS -----
 
 data E = E :+: E
        | E :*: E
@@ -133,13 +126,13 @@ data E = E :+: E
 e :: GRId Char E
 e = do
     rec
-      e  <- rule [(:+:) <@> e # '+' #> t
+      e  <- rule [(:+:) <@> e <# '+' <#> t
                  ,id    <@> t
                  ]
-      t  <- rule [(:*:) <@> t # '*' #> f
+      t  <- rule [(:*:) <@> t <# '*' <#> f
                  ,id    <@> f
                  ]
-      f  <- rule [id    <@ '(' #> e # ')'
+      f  <- rule [id    <@ '(' <#> e <# ')'
                  ,Var   <@ 'x'
                  ]
     return e
@@ -159,32 +152,33 @@ data E1 = E1 :++: E1
 e1 :: GRId Sym E1
 e1 = do
     rec
-      e  <- rule [(:++:) <@> e # Plus  #> t
+      e  <- rule [(:++:) <@> e <# Plus  <#> t
                  ,id     <@> t
                  ]
-      t  <- rule [(:**:) <@> t # Times #> f
+      t  <- rule [(:**:) <@> t <# Times <#> f
                  ,id     <@> f
                  ]
-      f  <- rule [id     <@ LParen #> e # RParen
+      f  <- rule [id     <@ LParen <#> e <# RParen
                  ,idV    <@> Ident ""
                  ]
     return e
   where
     idV (Ident x) = E1Var x
+    idV _         = error "idV"
 
 e1inp = [Ident "x",Times,Ident "y",Times,LParen,Ident "x1",Plus,Ident "y1",RParen]
 
 test :: Grammar Char (RId Char Int)
 test = do
     rec
-      x <- rule [(\y (Just z) -> y + z) <@> y #> z]
+      x <- rule [(\y (Just z) -> y + z) <@> y <#> z]
       y <- rule [const 1                <@> '1']
-      z <- rule [(Just 3)         <@ '2']
+      z <- rule [(Just 3)               <@ '2']
     return x
 
 test2 :: Grammar Char (RId Char [Char])
 test2 = do
     rec
-      x <- rule [(\a b x -> a:b:x) <@ 'x' #> 'a' #> 'b' #> x
+      x <- rule [(\a b x -> a:b:x) <@ 'x' <#> 'a' <#> 'b' <#> x
                 ,[]  <@ 'z']
     return x
