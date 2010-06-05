@@ -1,11 +1,10 @@
-{-# LANGUAGE DoRec, PackageImports, NoMonomorphismRestriction, GADTs, DeriveDataTypeable #-}
+{-# LANGUAGE PackageImports #-}
 module LR where
 import Control.Applicative
 import qualified Control.Arrow as A
 import "monads-fd" Control.Monad.Reader
 import Data.Data
 import Data.Dynamic
-import Data.Function
 import Data.Map(Map)
 import qualified Data.Map as M
 import Data.Set(Set)
@@ -17,6 +16,7 @@ import Debug.Trace
 
 import Aux
 import qualified Typed as T
+import Table
 import Untyped
 
 -- Get all rules from a grammar (recursively)
@@ -125,18 +125,6 @@ follow' done rid startrid rids = case rid `S.member` done of
         firstbeta = firstProd beta
         rest      = S.delete Nothing firstbeta
 
--- | Data type used in the action table to determine the next
---   parsing action depending on the input and current state
-data Action
-    = Shift  Int
-    | Reduce Int (Int, Int)
-    | Accept
-    | Error
-  deriving Show
-
-type ActionTable s = Map (Int, Maybe s)   Action
-type GotoTable   s = Map (Int, Int) Int
-
 type SLR s a = Reader (SLRState s) a
 data SLRState s = SLRState
     {
@@ -232,7 +220,7 @@ driver (actiont, gotot, start) input =
 
 rtToTyped :: Typeable s => (s' -> s) -> ProdFuns -> ReductionTree s' -> Dynamic
 rtToTyped unc _    (RTTerm (Just s))     = toDyn (unc s)
-rtToTyped unc funs (RTReduce r p tree) = trace (show (T.applDynFun fun l)) $ T.applDynFun fun l
+rtToTyped unc funs (RTReduce r p tree) = T.applDynFun fun l
   where
     l             = map (rtToTyped unc funs) tree
     fun           = fromJust $ M.lookup (r, p) funs
@@ -252,19 +240,6 @@ runSLRGRes :: (Data s, Typeable s', Typeable a, Ord s', Show s')
 runSLRGRes c unc g inp = do
     (res, funs) <- runSLRG c g inp
     return $ fromJust $ fromDynamic $ rtToTyped unc funs res
-
--- | Type for representing tokens only caring about the constructor
-data CTok a where
-    CTok :: {unCTok :: a} -> CTok a
-  deriving (Show, Typeable)
-
-instance Data a => Eq (CTok a) where
-    CTok x == CTok y = ((==) `on` toConstr) x y
-
-instance (Data a, Ord a) => Ord (CTok a) where
-    CTok x `compare` CTok y = case ((==) `on` toConstr) x y of
-        True  -> EQ
-        False -> x `compare` y
 
 runSLR  :: (Data s, Typeable a, Ord s, Show s)
         => T.GRId s a -> [s] -> T.Grammar s a

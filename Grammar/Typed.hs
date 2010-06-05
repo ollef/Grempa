@@ -61,8 +61,8 @@ data DynFun = DynFun Dynamic [Bool]
 
 applDynFun :: DynFun -> [Dynamic] -> Dynamic
 applDynFun (DynFun f (b:bs)) (a:as)
-    | b         = applDynFun (DynFun (dynApp f a) bs) as
-    | otherwise = applDynFun (DynFun f bs) as
+     | b         = applDynFun (DynFun (dynApp f a) bs) as
+     | otherwise = applDynFun (DynFun f bs) as
 applDynFun (DynFun f _) _ = f
 
 getFun :: Prod s a -> DynFun
