@@ -245,3 +245,4 @@ runSLRC = runSLRGRes CTok unCTok
 actionError, gotoError :: String
 actionError = "ActionTable"
 gotoError   = "GotoTable"
+

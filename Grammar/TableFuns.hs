@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell #-}
 module TableFuns where
 
+import Control.Applicative
 import Data.Dynamic
 import Data.Maybe
 import Data.Map(Map, toList)
@@ -10,6 +11,7 @@ import Language.Haskell.TH.Syntax
 import Language.Haskell.TH.Lift
 
 import LR
+import Table
 import qualified Typed as T
 import Token
 import Untyped
@@ -56,9 +58,21 @@ runSLRGTH g = T.evalGrammar $ do
     return (res, funs)
 
 runSLRGResTH :: (Typeable a)
-             => T.GRId Char a -> Q [Dec]
-runSLRGResTH g = do r <- funD (mkName "tester")
-                         [clause [] (normalB [| \inp -> ($res inp) |]) []]
-                    return [r]
-  where (res, funs) = runSLRGTH g
+             => T.GRId Char a -> ExpQ -> String -> Q [Dec]
+runSLRGResTH g gn name = do
+    driver  <- newName "driver"
+    let driverf = funD driver
+                  [clause [] (normalB [| \inp -> ($res inp) |]) []]
+    res     <- funD (mkName name)
+               [clause [] (normalB
+                  [| thDriver $gn $(varE driver) |]) [driverf]]
+
+    return [res]
+  where (res, _) = runSLRGTH g
+
+thDriver :: (Token s, Typeable a) => T.GRId s a -> ([s] -> ReductionTree s) -> [s] -> a
+thDriver g f inp = fromJust $ fromDynamic $ rtToTyped id funs (f inp)
+  where
+    funs = T.evalGrammar (snd <$> unType id <$> T.augment g)
+
 

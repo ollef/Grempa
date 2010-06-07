@@ -4,4 +4,4 @@ module Test2 where
 import Test
 import TableFuns
 
-$(runSLRGResTH e)
+$(runSLRGResTH e [|e|] "parseE")
