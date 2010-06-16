@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, DeriveDataTypeable, UndecidableInstances, FlexibleInstances #-}
+{-# LANGUAGE DeriveDataTypeable, UndecidableInstances, FlexibleInstances #-}
 module Token where
 
 import Data.Typeable
@@ -9,8 +9,7 @@ class (Data s, Ord s, Show s) => Token s where
 instance (Data s, Ord s, Show s) => Token s where
 
 -- | Type for representing tokens only caring about the constructor
-data CTok a where
-    CTok :: {unCTok :: a} -> CTok a
+data CTok a = CTok {unCTok :: a}
   deriving (Show, Data, Typeable)
 
 instance Token a => Eq (CTok a) where

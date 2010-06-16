@@ -1,5 +1,5 @@
-{-# LANGUAGE PackageImports #-}
-module SLR where
+{-# LANGUAGE PackageImports, TemplateHaskell, GADTs #-}
+module LALR where
 import Control.Applicative
 import qualified Control.Arrow as A
 import "monads-fd" Control.Monad.Reader
@@ -17,11 +17,11 @@ import Table
 import Token
 import Untyped
 
-data Item s =
-     Item { itRId  :: RId s
-          , itProd :: Int
-          , itPos  :: Int
-          }
+data Item s where
+    Item :: { itRId  :: RId s
+            , itProd :: Int
+            , itPos  :: Int
+            } -> Item s
   deriving (Eq, Ord, Show)
 
 getItProd :: Item s -> Prod s
