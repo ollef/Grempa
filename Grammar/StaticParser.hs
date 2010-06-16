@@ -1,14 +1,12 @@
 {-# LANGUAGE TemplateHaskell #-}
-module TableFuns where
+module StaticParser where
 
 import Control.Applicative
 import Data.Dynamic
 import Data.Maybe
 import Data.Map(Map, toList)
-import Data.Typeable
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
-import Language.Haskell.TH.Lift
 
 import LR
 import Table
@@ -32,6 +30,9 @@ instance ToPat a => ToPat (Maybe a) where
     toPat (Just x) = conP 'Just [toPat x]
     toPat Nothing  = conP 'Nothing []
 
+instance ToPat a => ToPat [a] where
+    toPat = listP . map toPat
+
 mkFunMap :: (ToPat a, Lift b) => Map a b -> ExpQ
 mkFunMap = mkFun . toList
 
@@ -44,9 +45,6 @@ mkFun ms = do
                 ++ [match wildP (normalB [|error "Couldn't match"|]) []]
   where
     mkMatch (a,b) = match (toPat a) (normalB [|b|]) []
-    getMatch c = do
-        CaseE _ [m] <- c
-        return m
 
 runSLRGTH :: (Typeable a)
           => T.GRId Char a -> (ExpQ, ProdFuns)
@@ -57,17 +55,13 @@ runSLRGTH g = T.evalGrammar $ do
         res         = [|driver ($(mkFunMap at), $(mkFunMap gt), st) |]
     return (res, funs)
 
-runSLRGResTH :: (Typeable a)
-             => T.GRId Char a -> ExpQ -> String -> Q [Dec]
-runSLRGResTH g gn name = do
-    driver  <- newName "driver"
-    let driverf = funD driver
+mkStaticParser :: (Typeable a)
+             => T.GRId Char a -> ExpQ -> ExpQ
+mkStaticParser g gn = do
+    drive  <- newName "driver"
+    let driverf = funD drive
                   [clause [] (normalB [| \inp -> ($res inp) |]) []]
-    res     <- funD (mkName name)
-               [clause [] (normalB
-                  [| thDriver $gn $(varE driver) |]) [driverf]]
-
-    return [res]
+    letE [driverf] [| thDriver $gn $(varE drive) |]
   where (res, _) = runSLRGTH g
 
 thDriver :: (Token s, Typeable a) => T.GRId s a -> ([s] -> ReductionTree s) -> [s] -> a

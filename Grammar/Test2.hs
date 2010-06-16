@@ -2,6 +2,8 @@
 module Test2 where
 
 import Test
-import TableFuns
+import StaticParser
 
-$(runSLRGResTH e [|e|] "parseE")
+
+parseE :: String -> E
+parseE = $(mkStaticParser e [|e|])

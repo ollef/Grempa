@@ -1,9 +1,11 @@
-{-# LANGUAGE GADTs, DoRec, DeriveDataTypeable, PackageImports, TypeFamilies, FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE GADTs, DoRec, DeriveDataTypeable, PackageImports, TypeFamilies, FlexibleInstances, MultiParamTypeClasses, TemplateHaskell #-}
 module Typed where
 
 import "monads-fd" Control.Monad.State
 import Data.Data
 import Data.Dynamic
+
+import Table
 
 type Rule s a = [Prod s a]
 
@@ -56,14 +58,6 @@ augment g = do
     s <- rule [id <@> r]
     r <- g
   return s
-
-data DynFun = DynFun Dynamic [Bool]
-
-applDynFun :: DynFun -> [Dynamic] -> Dynamic
-applDynFun (DynFun f (b:bs)) (a:as)
-     | b         = applDynFun (DynFun (dynApp f a) bs) as
-     | otherwise = applDynFun (DynFun f bs) as
-applDynFun (DynFun f _) _ = f
 
 getFun :: Prod s a -> DynFun
 getFun = getFun' []

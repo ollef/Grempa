@@ -1,10 +1,8 @@
-{-# LANGUAGE PackageImports, TemplateHaskell #-}
+{-# LANGUAGE PackageImports, TemplateHaskell, GADTs #-}
 module LR where
 import Control.Applicative
 import qualified Control.Arrow as A
 import "monads-fd" Control.Monad.Reader
---import Data.Data
-import Data.Dynamic
 import Data.Map(Map)
 import qualified Data.Map as M
 import Data.Set(Set)
@@ -12,13 +10,23 @@ import qualified Data.Set as S
 import Data.Maybe
 import Data.List
 
-import Debug.Trace
+--import Debug.Trace
 
 import Aux
-import qualified Typed as T
 import Table
 import Token
 import Untyped
+
+data Item s where
+    Item :: { itRId  :: RId s
+            , itProd :: Int
+            , itPos  :: Int
+            } -> Item s
+  deriving (Eq, Ord, Show)
+
+getItProd :: Item s -> Prod s
+getItProd i = rIdRule (itRId i) !! itProd i
+
 
 -- Get all rules from a grammar (recursively)
 rules :: Token s => RId s -> [RId s]
@@ -192,11 +200,6 @@ actions items start rs = do
             | otherwise     -> return [(Nothing, Accept)]
         _ -> return []
 
--- | Data type for reduction trees output by the driver
-data ReductionTree s
-    = RTReduce Int Int [ReductionTree s]
-    | RTTerm (Maybe s)
-  deriving Show
 
 driver :: Token s => (ActionFun s, GotoFun s, Int) -> [s] -> ReductionTree s
 driver (actionf, gotof, start) input =
@@ -212,37 +215,3 @@ driver (actionf, gotof, start) input =
             rt' = RTReduce rule prod (reverse $ take len rt) : drop len rt
         Accept -> head rt
     driver' _ _ _ = error "driver'"
-
-rtToTyped :: Token s => (s' -> s) -> ProdFuns -> ReductionTree s' -> Dynamic
-rtToTyped unc _    (RTTerm (Just s))     = toDyn (unc s)
-rtToTyped unc funs (RTReduce r p tree) = T.applDynFun fun l
-  where
-    l             = map (rtToTyped unc funs) tree
-    fun           = fromJust $ M.lookup (r, p) funs
-rtToTyped _ _ _ = error "rtToTyped"
-
-runSLRG :: (Token s', Token s, Typeable a) => (s -> s')
-        -> T.GRId s a -> [s] -> T.Grammar s (ReductionTree s', ProdFuns)
-runSLRG c g inp = do
-    g' <- T.augment g
-    let (unt, funs) = unType c g'
-        (at,gt,st)  = slr unt
-        res         = driver (toFun actionError at, toFun gotoError gt, st) $ map c inp
-    return (res, funs)
-
-runSLRGRes :: (Token s, Token s', Typeable a)
-       => (s -> s') -> (s' -> s) -> T.GRId s a -> [s] -> T.Grammar s a
-runSLRGRes c unc g inp = do
-    (res, funs) <- runSLRG c g inp
-    return $ fromJust $ fromDynamic $ rtToTyped unc funs res
-
-runSLR  :: (Token s, Typeable a) => T.GRId s a -> [s] -> T.Grammar s a
-runSLR  = runSLRGRes id id
-
-runSLRC :: (Token s, Typeable a) => T.GRId s a -> [s] -> T.Grammar s a
-runSLRC = runSLRGRes CTok unCTok
-
-actionError, gotoError :: String
-actionError = "ActionTable"
-gotoError   = "GotoTable"
-

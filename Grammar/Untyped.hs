@@ -7,17 +7,8 @@ import "monads-fd" Control.Monad.State
 import qualified Data.Map as M
 import Data.Map(Map)
 
+import Table
 import qualified Typed as T
-
-data Item s where
-    Item :: { itRId  :: RId s
-            , itProd :: Int
-            , itPos  :: Int
-            } -> Item s
-  deriving (Eq, Ord, Show)
-
-getItProd :: Item s -> Prod s
-getItProd i = rIdRule (itRId i) !! itProd i
 
 type Rule s = [Prod s]
 type Prod s = [Symbol s]
@@ -36,7 +27,6 @@ instance Eq (RId s) where
 instance Ord (RId s) where
     RId i _ `compare` RId j _ = i `compare` j
 
-type ProdFuns = Map (Int, Int) (T.DynFun)
 -- | Returns an untyped tree representation of a typed grammar
 --   together with a mapping from rule and production number to
 --   a dynamic containing the construction function of the typed
