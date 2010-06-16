@@ -8,8 +8,10 @@ import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Tree
 
 import qualified Typed
+import qualified Test
 
-import LR
+import Table
+import DynamicParser
 
 makeGraph :: Show s => [ReductionTree s] -> Gr (String, Color, Shape) Color
 makeGraph = uncurry mkGraph . flip evalState 0 . makeGraph' Nothing
@@ -78,4 +80,4 @@ toDotGraph x = graphToDot True
     edgeToAttr (from, to, label) = [Color [label]]
 
 writeTest e = writeFile "test.dot" x
-  where x = toGraphviz $ (:[]) $ fst $ Typed.evalGrammar $ runSLRG id Typed.e e
+  where x = toGraphviz $ (:[]) $ fst $ Typed.evalGrammar $ runSLRG id Test.e e
