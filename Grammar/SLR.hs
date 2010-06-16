@@ -1,5 +1,5 @@
 {-# LANGUAGE PackageImports, TemplateHaskell, GADTs #-}
-module LR where
+module SLR where
 import Control.Applicative
 import qualified Control.Arrow as A
 import "monads-fd" Control.Monad.Reader
@@ -26,7 +26,6 @@ data Item s where
 
 getItProd :: Item s -> Prod s
 getItProd i = rIdRule (itRId i) !! itProd i
-
 
 -- Get all rules from a grammar (recursively)
 rules :: Token s => RId s -> [RId s]

@@ -63,7 +63,7 @@ test = do
     rec
       x <- rule [(\y (Just z) -> y + z) <@> y <#> z]
       y <- rule [const 1                <@> '1']
-      z <- rule [(Just 3)               <@ '2']
+      z <- rule [(Just 3)               <@  '2']
     return x
 
 test2 :: Grammar Char (RId Char [Char])

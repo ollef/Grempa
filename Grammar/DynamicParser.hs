@@ -2,11 +2,9 @@ module DynamicParser where
 
 import Data.Data
 import Data.Dynamic
-import Data.Map(Map)
-import qualified Data.Map as M
 import Data.Maybe
 
-import LR
+import SLR
 import Table
 import Token
 import qualified Typed as T

@@ -8,7 +8,7 @@ import Data.Map(Map, toList)
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
-import LR
+import SLR
 import Table
 import qualified Typed as T
 import Token
