@@ -5,10 +5,20 @@ import Data.Typeable
 import Data.Data
 import Data.Function
 
+data Tok s  = Tok {unTok :: s}
+            | RightEnd
+  deriving (Eq, Ord, Show)
+
+-- Data type for token or epsilon
+data ETok s = ETok {unETok :: s}
+            | Epsilon
+  deriving (Eq, Ord, Show)
+
 class (Data s, Ord s, Show s) => Token s where
 instance (Data s, Ord s, Show s) => Token s where
 
 -- | Type for representing tokens only caring about the constructor
+--  TODO: Refactor this somewhere
 data CTok a = CTok {unCTok :: a}
   deriving (Show, Data, Typeable)
 

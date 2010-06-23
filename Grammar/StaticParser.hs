@@ -26,9 +26,9 @@ instance ToPat Int where
 instance (ToPat a, ToPat b) => ToPat (a, b) where
     toPat (x, y) = tupP [toPat x, toPat y]
 
-instance ToPat a => ToPat (Maybe a) where
-    toPat (Just x) = conP 'Just [toPat x]
-    toPat Nothing  = conP 'Nothing []
+instance ToPat a => ToPat (Tok a) where
+    toPat (Tok x)   = conP 'Tok [toPat x]
+    toPat RightEnd  = conP 'RightEnd []
 
 instance ToPat a => ToPat [a] where
     toPat = listP . map toPat

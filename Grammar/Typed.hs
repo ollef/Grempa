@@ -10,7 +10,7 @@ import Table
 type Rule s a = [Prod s a]
 
 -- Inspired by ChristmasTree
--- Will be built backwards for the functions to not be backwards
+-- Will be built backwards for the functions to be "forwards"
 data Prod s a where
     PSeq  :: Symbol s b -> Prod s (b -> a) -> Prod s a
     -- Result does not matter

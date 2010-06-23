@@ -1,0 +1,49 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+module Item where
+
+import Data.Set(Set)
+import qualified Data.Set as S
+
+import Aux
+import Untyped
+import Token
+
+class (Eq (i s), Ord (i s), Show (i s), Token s) => It i s where
+    itRId     :: i s -> RId s
+    itProd    :: i s -> Int
+    getItPos  :: i s -> Int
+    setItPos  :: i s -> Int -> i s
+    closure   :: Set (i s) -> Set (i s)
+    startItem :: RId s -> i s
+
+getItProd :: It i s => i s -> Prod s
+getItProd i = rIdRule (itRId i) !! itProd i
+
+isKernel :: It i s => RId s -> i s -> Bool
+isKernel st it = itRId it == st || getItPos it > 0
+
+-- | Return the symbol to the right of the "dot" in the item
+nextSymbol :: It i s => i s -> Tok (Symbol s)
+nextSymbol i
+    | pos < length prod = Tok $ prod !! pos
+    | otherwise         = RightEnd
+  where prod = getItProd i
+        pos  = getItPos i
+
+-- | Determine the state transitions in the parsing
+goto :: (It i s, Token s) => Set (i s) -> Symbol s -> Set (i s)
+goto is s = closure $ setFromJust $ S.map (nextTest s) is
+  where
+    nextTest x i
+      | nextSymbol i == Tok x = Just (setItPos i (getItPos i + 1))
+      | otherwise             = Nothing
+
+-- | The sets of items for a grammar
+itemSets :: (It i s, Token s) => RId s -> [RId s] -> Set (Set (i s))
+itemSets rid rids = recTraverseG itemSets' c1
+  where
+    c1            = S.singleton $ closure $ S.singleton $ startItem rid
+    symbols       = terminals rids ++ nonTerminals rids
+    itemSets' c   = (c `S.union` gs, gs)
+      where gs    = S.fromList [goto i x | i <- S.toList c, x <- symbols]
+
