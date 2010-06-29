@@ -14,6 +14,7 @@ import Table
 import Token
 import qualified Typed as T
 
+-- | The recursive data types for untyped grammars
 type Rule s = [Prod s]
 type Prod s = [Symbol s]
 
@@ -24,7 +25,7 @@ data Symbol s
 
 data RId s = RId {rId :: Int, rIdRule :: Rule s}
 
-instance Show s => Show (RId s) where
+instance Show (RId s) where
     show (RId i _) = show i
 instance Eq (RId s) where
     RId i _ == RId j _ = i == j
@@ -63,7 +64,7 @@ unType cs = second snd . flip runState (M.empty, M.empty) . unTypeR cs
 
 
 instance Functor RId where
-    fmap f = flip evalState M.empty .  fmapR f
+    fmap = flip evalState M.empty `dot` fmapR
       where
         fmapS :: (a -> b) -> Symbol a -> State (Map (RId a) (RId b)) (Symbol b)
         fmapS f (STerm s) = return $ STerm $ f s
@@ -79,7 +80,8 @@ instance Functor RId where
         fmapR :: (a -> b) -> RId a -> State (Map (RId a) (RId b)) (RId b)
         fmapR f (RId n r) = RId n <$> mapM (mapM (fmapS f)) r
 
--- Get all rules from a grammar (recursively)
+-------------------------------------------------------------------------------
+-- | Get all rules from a grammar by following a rule's non-terminals recursively
 rules :: Token s => RId s -> [RId s]
 rules = S.toList . recTraverseG rules' . S.singleton
   where

@@ -49,4 +49,3 @@ rtToTyped unc funs (RTReduce r p tree) = applDynFun fun l
   where
     l           = map (rtToTyped unc funs) tree
     fun         = fromJust $ M.lookup (r, p) funs
-rtToTyped _ _ _ = error "rtToTyped"

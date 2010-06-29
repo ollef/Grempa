@@ -73,3 +73,31 @@ test2 = do
                 ,[]  <@ 'z']
     return x
 
+data S = SAss L R | SR R
+  deriving (Show, Typeable)
+data L = Star R | LIdent
+  deriving (Show, Typeable)
+data R = R L
+  deriving (Show, Typeable)
+
+ex :: GRId Char S
+ex = do
+  rec
+    s <- rule [SAss   <@> l <# '=' <#> r
+              ,SR     <@> r]
+    l <- rule [Star   <@ '*' <#> r
+              ,LIdent <@ 'x']
+    r <- rule [R      <@> l]
+  return s
+
+data Sx = Sx C C deriving (Show, Typeable)
+data C  = Cc C | Cd deriving (Show, Typeable)
+
+ex454 :: GRId Char Sx
+ex454 = do
+  rec
+    s <- rule [Sx <@> c  <#> c]
+    c <- rule [Cc <@ 'c' <#> c
+              ,Cd <@ 'd']
+  return s
+

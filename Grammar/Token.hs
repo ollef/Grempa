@@ -14,6 +14,14 @@ data ETok s = ETok {unETok :: s}
             | Epsilon
   deriving (Eq, Ord, Show)
 
+instance Functor Tok where
+    fmap f (Tok s)  = Tok (f s)
+    fmap f RightEnd = RightEnd
+
+instance Functor ETok where
+    fmap f (ETok s) = ETok (f s)
+    fmap f Epsilon  = Epsilon
+
 class (Data s, Ord s, Show s) => Token s where
 instance (Data s, Ord s, Show s) => Token s where
 

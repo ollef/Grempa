@@ -5,6 +5,7 @@ import Data.Dynamic
 import Data.Maybe
 
 import SLR
+import LALR
 import Table
 import Token
 import qualified Typed as T
@@ -15,7 +16,7 @@ runSLRG :: (Token s', Token s, Typeable a) => (s -> s')
 runSLRG c g inp = do
     g' <- T.augment g
     let (unt, funs) = unType c g'
-        (at,gt,st)  = slr unt
+        (at,gt,st)  = lalr unt
         res         = driver (toFun actionError at, toFun gotoError gt, st) $ map c inp
     return (res, funs)
 

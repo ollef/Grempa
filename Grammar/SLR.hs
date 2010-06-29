@@ -3,14 +3,13 @@ module SLR where
 import Control.Applicative
 import qualified Control.Arrow as A
 import "monads-fd" Control.Monad.Reader
-import Data.Map(Map)
 import qualified Data.Map as M
 import Data.Set(Set)
 import qualified Data.Set as S
 import Data.Maybe
 import Data.List
 
---import Debug.Trace
+import Debug.Trace
 
 import Aux
 import Item
@@ -23,19 +22,24 @@ data Item s =
           , itemProd :: Int
           , itemPos  :: Int
           }
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord)
+
+instance Show (Item s) where
+  show (Item r pr po) = "It(" ++ show r  ++
+                          "," ++ show pr ++
+                          "," ++ show po ++ ")"
 
 instance Token s => It Item s where
     itRId         = itemRId
     itProd        = itemProd
     getItPos      = itemPos
-    setItPos i p  = i { itemPos = p }
-    closure       = closureSLR
+    setItPos i p  = i {itemPos = p}
+    closure       = closureLR0
     startItem rid = Item rid 0 0
 
 -- | Determine what items may be valid productions from an item
-closureSLR :: Token s => Set (Item s) -> Set (Item s)
-closureSLR = recTraverseG closure'
+closureLR0 :: Token s => Set (Item s) -> Set (Item s)
+closureLR0 = recTraverseG closure'
   where
     closure' is = (is `S.union` res, res)
       where res = S.unions $ map closureI (S.toList is)
@@ -48,78 +52,63 @@ closureSLR = recTraverseG closure'
                                  $ map (\p -> Item rid p 0) [0..length prods - 1]
 
 ----------------------------------
-type SLR s a = Reader (SLRState s) a
+{-type SLR s a = Reader (SLRState s) a
 data SLRState s = SLRState
     {
       slrItemSets :: Map (Set (Item s))   Int
     }
-
-slrLookup :: (Ord a, Show a) => a -> (SLRState s -> Map a Int) -> SLR s Int
-slrLookup x f = do
-    res <- M.lookup x <$> asks f
-    case res of
-        Just r  -> return r
-        Nothing -> error $ "slrLookup, Nothing" ++ show x
-
-askItemSet :: (Ord s, Show s) => Set (Item s) -> SLR s (Maybe Int)
-askItemSet x = M.lookup x <$> asks slrItemSets
+-}
 
 -- | Create SLR parsing tables from a starting rule of a grammar (augmented)
-slr :: Token s => RId s -> (ActionTable s, GotoTable s,Int)
+slr :: Token s => RId s -> (ActionTable s, GotoTable s, Int)
 slr g =
-    let rs         = rules g
-        cs         = S.toList $ itemSets g rs
-        cis        = M.fromList $ zip cs [0..]
-        slrs       = SLRState {slrItemSets = cis}
-        as         = M.unions [runReader (actions i g rs) slrs | i <- cs]
-        gs         = M.unions [runReader (gotos   i   rs) slrs | i <- cs]
-        start      = Item g 0 0
-        startState = snd $ maybe (error "slr: maybe") id
-                         $ find (\(c, _) -> start `S.member` c) (M.toList cis)
-    in (as, gs, startState)
+    let init       = gen g
+        cs         = gItemSets init
+        as         = M.unions [runGen (actions i) init | (i,_) <- cs]
+        gs         = M.unions [runGen (gotos   i) init | (i,_) <- cs]
+    in (as, gs, gStartState init)
 
 -- | Create goto table
-gotos :: Token s => Set (Item s) -> [RId s] -> SLR s (GotoTable s)
-gotos items rs = do
+gotos :: Token s => Set (Item s) -> Gen Item s (GotoTable s)
+gotos items = do
     Just i <- askItemSet items
+    nt     <- asks gNonTerminals
     M.fromList <$> catMaybes <$> sequence
         [do j <- askItemSet (goto items a)
             return $ case j of
                 Nothing -> Nothing
                 Just x  -> Just ((i, ai), x)
-          | a@(SRule (RId ai _)) <- nonTerminals rs]
-
+          | a@(SRule (RId ai _)) <- nt]
 
 -- | Create action table
-actions :: Token s => Set (Item s) -> RId s -> [RId s] -> SLR s (ActionTable s)
-actions items start rs = do
+actions :: Token s => Set (Item s) -> Gen Item s (ActionTable s)
+actions items = do
     Just i <- askItemSet items
+    start  <- asks gStartRule
+    rs     <- asks gRules
+    let actions' item@Item {itemRId = rid@(RId ri _)} = case nextSymbol item of
+            Tok a@(STerm s) -> do
+                j <- askItemSet $ goto items a
+                case j of
+                    Just x  -> return [(Tok s, Shift x)]
+                    Nothing -> return []
+            RightEnd
+                | rid /= start -> do
+                    let as = S.toList $ follow rid start rs
+                    return [(a, Reduce ri (itProd item, length (getItProd item)))
+                           | a <- as]
+                | otherwise     -> return [(RightEnd, Accept)]
+            _ -> return []
     M.fromList
         <$> concat
         <$> sequence
             [map (A.first ((,) i)) <$> actions' it | it <- S.toList items]
-  where
-    --actions' :: Item s -> SLR s [(Maybe s, Action)]
-    actions' item@Item {itemRId = rid@(RId ri _)} = case nextSymbol item of
-        Tok a@(STerm s) -> do
-            j <- askItemSet $ goto items a
-            case j of
-                Just x  -> return [(Tok s, Shift x)]
-                Nothing -> return []
-        RightEnd
-            | rid /= start -> do
-                let as = S.toList $ follow rid start rs
-                return [(a, Reduce ri (itProd item, length (getItProd item)))
-                       | a <- as]
-            | otherwise     -> return [(RightEnd, Accept)]
-        _ -> return []
-
 
 driver :: Token s => (ActionFun s, GotoFun s, Int) -> [s] -> ReductionTree s
 driver (actionf, gotof, start) input =
     driver' [start] (map Tok input ++ [RightEnd]) []
   where
-    driver' stack@(s:_) (a:rest) rt = --trace (show stack ++ "," ++ show (a:rest) ++ show action ++ show goto)
+    driver' stack@(s:_) (a:rest) rt = trace (show stack ++ "," ++ show (a:rest) ) $ 
       case actionf (s, a) of
         Shift t -> driver' (t : stack) rest (RTTerm (unTok a) : rt)
         Reduce rule (prod, len) -> driver' (got : stack') (a : rest) rt'

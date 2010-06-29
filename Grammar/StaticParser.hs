@@ -8,6 +8,7 @@ import Data.Map(Map, toList)
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
+import LALR
 import SLR
 import Table
 import qualified Typed as T
@@ -51,7 +52,7 @@ runSLRGTH :: (Typeable a)
 runSLRGTH g = T.evalGrammar $ do
     g' <- T.augment g
     let (unt, funs) = unType id g'
-        (at,gt,st)  = slr unt
+        (at,gt,st)  = lalr unt
         res         = [|driver ($(mkFunMap at), $(mkFunMap gt), st) |]
     return (res, funs)
 

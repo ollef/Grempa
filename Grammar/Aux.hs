@@ -22,3 +22,6 @@ recTraverseG = recTraverseG' S.empty
 recTraverse :: Ord a => (Set a -> Set a) -> Set a -> Set a
 recTraverse f = recTraverseG $ split . f
   where split x = (x, x)
+
+dot :: (c -> d) -> (a -> b -> c) -> a -> b -> d
+dot = (.) . (.)
