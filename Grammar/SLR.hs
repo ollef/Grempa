@@ -52,12 +52,6 @@ closureLR0 = recTraverseG closure'
                                  $ map (\p -> Item rid p 0) [0..length prods - 1]
 
 ----------------------------------
-{-type SLR s a = Reader (SLRState s) a
-data SLRState s = SLRState
-    {
-      slrItemSets :: Map (Set (Item s))   Int
-    }
--}
 
 -- | Create SLR parsing tables from a starting rule of a grammar (augmented)
 slr :: Token s => RId s -> (ActionTable s, GotoTable s, Int)

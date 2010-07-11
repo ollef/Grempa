@@ -16,7 +16,7 @@ runSLRG :: (Token s', Token s, Typeable a) => (s -> s')
 runSLRG c g inp = do
     g' <- T.augment g
     let (unt, funs) = unType c g'
-        (at,gt,st)  = lalr unt
+        (at,gt,st)  = slr unt
         res         = driver (toFun actionError at, toFun gotoError gt, st) $ map c inp
     return (res, funs)
 

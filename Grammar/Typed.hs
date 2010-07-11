@@ -110,3 +110,4 @@ infixl 5 <@
      => a -> x -> Prod s a
 f <@ p = PSeqN (toSym p) $ PEnd f
 
+epsilon c = PEnd c

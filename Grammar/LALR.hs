@@ -34,7 +34,7 @@ instance Show s => Show (Item s) where
   show (Item r pr po la) = "It(" ++ show r  ++
                              "," ++ show pr ++
                              "," ++ show po ++
-                             "," ++ show la ++ ")"
+                             "," ++ show la ++ ")\n"
 
 
 instance Token s => It Item s where
@@ -59,16 +59,17 @@ closureLR1 = recTraverseG closure'
       where
         firsts it = unETokSet $ firstProd $ itTail it
         itTail it = drop (getItPos it + 1) (getItProd it)
-                  ++ case itemLA i of
-                         Tok a   -> [STerm a]
-                         _       -> []
+        --unETokSet :: Token s => Set (ETok s) -> Set (Tok s)
+        unETokSet s = case Epsilon `S.member` s of
+            True -> S.insert (itemLA i)
+                  $ S.map (Tok . unETok)
+                  $ S.delete Epsilon s
+            False -> S.map (Tok . unETok) s
     -- | Get the items with the dot at the beginning from a rule
     firstItems :: Token s => RId s -> Tok s -> Set (Item s)
     firstItems rid@(RId _ prods) a = S.fromList
                                    $ map (\p -> Item rid p 0 a)
                                    [0..length prods - 1]
-    unETokSet :: Token s => Set (ETok s) -> Set (Tok s)
-    unETokSet = S.map (Tok . unETok) . S.delete Epsilon
 
 data Lookahead s
     = Spont (Tok s)
@@ -86,8 +87,7 @@ lookaheads :: Token s
            -> Set (SLR.Item (Maybe s))
            -> Symbol (Maybe s)
            -> Gen SLR.Item (Maybe s) (LookaheadTable s)
-lookaheads istate i k x = 
-  trace ("LOOKAHEADS: " ++ show (i, x) ++ show (goto i x)) $ do
+lookaheads istate i k x = do
     mjstate <- askItemSet (goto i x)
     case mjstate of
         Nothing -> return MM.empty
@@ -123,16 +123,16 @@ findLookaheads :: Token s
                -> State (Map (Int, SLR.Item (Maybe s))
                              (Set (Tok (Maybe s))))
                         (Set (Tok (Maybe s)))
-findLookaheads latable istate i = trace (show (istate, i)) $ do
+findLookaheads latable istate i = do
     done <- gets $ M.lookup (istate, i)
     case done of
         Just toks -> return toks
         Nothing   -> do
-            let las = tracer "las: " $ MM.lookup (istate, i) latable
+            let las = MM.lookup (istate, i) latable
             rec
               modify $ M.insert (istate, i) res
               res <- S.unions <$> mapM go (S.toList $ S.delete (PropFrom istate i) las)
-            return $ tracer "res: " res
+            return res
   where
     go (Spont s)        = return $ S.singleton s
     go (PropFrom st it) = findLookaheads latable st it
@@ -145,9 +145,8 @@ lalrItems = do
     let kss  = tracer "KERNELS: " $ map (A.first $ kernel st) $ tracer "ITEMS: " iss
     syms <- asks gSymbols
     las <- zipWithM (\(i,n) (k,_) -> MM.unions <$> mapM (lookaheads n i k) syms) iss kss
-    --trace ("XXX" ++ show las ++ "XXX") $ return ()
     let tab = tracer "TAB: " $ MM.unions las
-    return $ tracer "lalrItems: " $ flip evalState M.empty $ do
+    return $ tracer "LALRITEMS: " $ flip evalState M.empty $ do
         sequence [ do
             newi <- sequence [ toIts it <$> findLookaheads tab n it
                              | it <- S.toList ks]
@@ -197,7 +196,7 @@ actions items = do
                 j <- askItemSet $ goto items a
                 case j of
                     Just x  -> return [(Tok s, Shift x)]
-                    Nothing -> return []
+                    Nothing -> trace ("NOTHING: " ++ show (i,a, items, goto items a)) $ return []
             RightEnd
                 | rid /= start ->
                     return

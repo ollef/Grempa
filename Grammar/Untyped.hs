@@ -66,18 +66,18 @@ unType cs = second snd . flip runState (M.empty, M.empty) . unTypeR cs
 instance Functor RId where
     fmap = flip evalState M.empty `dot` fmapR
       where
-        fmapS :: (a -> b) -> Symbol a -> State (Map (RId a) (RId b)) (Symbol b)
+        fmapS :: (a -> b) -> Symbol a -> Done (RId a) (RId b) (Symbol b)
         fmapS f (STerm s) = return $ STerm $ f s
         fmapS f (SRule r) = do
-            done <- get
-            case M.lookup r done of
+            done <- getDone r
+            case done of
               Just r' -> return $ SRule r'
               Nothing -> do
                   rec
-                    put $ M.insert r res done
+                    putDone r res
                     res <- fmapR f r
                   return $ SRule res
-        fmapR :: (a -> b) -> RId a -> State (Map (RId a) (RId b)) (RId b)
+        fmapR :: (a -> b) -> RId a -> DoneA (RId a) (RId b)
         fmapR f (RId n r) = RId n <$> mapM (mapM (fmapS f)) r
 
 -------------------------------------------------------------------------------
@@ -98,48 +98,71 @@ terminals = concatMap (\(RId _ rs) -> [STerm s | as <- rs, STerm s <- as])
 nonTerminals :: Token s => [RId s] -> [Symbol s]
 nonTerminals = map SRule
 
+type Done k v = State (Map k v)
+type DoneA k v = Done k v v
+
+getDone :: Ord k => k -> Done k v (Maybe v)
+getDone = gets . M.lookup
+
+putDone :: Ord k => k -> v -> Done k v ()
+putDone = modify `dot` M.insert
+
+evalDone :: Done k v a -> a
+evalDone = flip evalState M.empty
+
 -- | Get the first tokens that a symbol eats
 first :: Token s => Symbol s -> Set (ETok s)
-first = first' S.empty
+first = evalDone . first'
 
-first' :: Token s => Set (RId s) -> Symbol s -> Set (ETok s)
-first' _    (STerm s)              = S.singleton (ETok s)
-first' done (SRule rid@(RId _ r)) = case rid `S.member` done of
-    False -> S.unions $ map (firstProd' $ S.insert rid done) r
-    True  -> S.empty
+first' :: Token s => Symbol s -> DoneA (RId s) (Set (ETok s))
+first' (STerm s)             = return $ S.singleton (ETok s)
+first' (SRule rid@(RId _ r)) = do
+    d <- getDone rid
+    case d of
+        Just x  -> return x
+        Nothing -> do
+          rec
+            putDone rid res
+            res <- S.unions <$> mapM firstProd' r
+          return res
 
 -- | Get the first tokens of a production
 firstProd :: Token s => Prod s -> Set (ETok s)
-firstProd = firstProd' S.empty
+firstProd = evalDone . firstProd'
 
-firstProd' :: Token s => Set (RId s) -> Prod s -> Set (ETok s)
-firstProd' _    []     = S.singleton Epsilon
-firstProd' done (x:[]) = first' done x
-firstProd' done (x:xs) = case Epsilon `S.member` fx of
-    True  -> S.union fx' (firstProd' done xs)
-    False -> fx'
-  where
-    fx  = first' done x
-    fx' = S.delete Epsilon fx
+firstProd' :: Token s => Prod s -> DoneA (RId s) (Set (ETok s))
+firstProd' []     = return $ S.singleton Epsilon
+firstProd' (x:xs) = do
+    fx <- first' x
+    case Epsilon `S.member` fx of
+        True  -> S.union (S.delete Epsilon fx) <$> firstProd' xs
+        False -> return fx
 
 -- | Get all symbols that can follow a rule,
 --   also given the start rule and a list of all rules
 follow :: Token s => RId s -> RId s -> [RId s] -> Set (Tok s)
-follow = follow' S.empty
+follow rid = evalDone `dot` follow' rid
 
-follow' :: Token s => Set (RId s) -> RId s -> RId s -> [RId s] -> Set (Tok s)
-follow' done rid startrid rids = case rid `S.member` done of
-    True  -> S.empty
-    False -> S.unions $
-        (if rid == startrid then S.singleton RightEnd else S.empty) :
-        [followProd prod a | a@(RId _ prods) <- rids, prod <- prods]
+follow' :: Token s => RId s -> RId s -> [RId s] -> DoneA (RId s) (Set (Tok s))
+follow' rid startrid rids = do
+    d <- getDone rid
+    case d of
+        Just x  -> return x
+        Nothing -> do
+          rec
+            putDone rid res
+            res <- (if rid == startrid then S.insert RightEnd else id)
+                <$> S.unions
+                <$> sequence [followProd prod a
+                                 | a@(RId _ prods) <- rids
+                                 , prod <- prods]
+          return res
   where
-    followProd []       _ = S.empty
+    followProd []       _ = return S.empty
     followProd (b:beta) a
         | b == SRule rid = case Epsilon `S.member` firstbeta of
-            True  -> follow' (S.insert rid done)
-                             a startrid rids `S.union` rest
-            False -> rest
+            True  -> (rest `S.union`) <$> follow' a startrid rids
+            False -> return rest
         | otherwise      = followProd beta a
       where
         firstbeta = firstProd beta

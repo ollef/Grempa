@@ -101,3 +101,10 @@ ex454 = do
               ,Cd <@ 'd']
   return s
 
+list :: GRId Char [Char]
+list = do
+  rec
+    x <- rule [epsilon []
+              ,('a':) <@ 'x' <#> x
+              ,('b':) <@ 'y' <# 'y' <#> x]
+  return x
