@@ -106,5 +106,5 @@ list = do
   rec
     x <- rule [epsilon []
               ,('a':) <@ 'x' <#> x
-              ,('b':) <@ 'y' <# 'y' <#> x]
+              ,('b':) <@ 'y' <#> x]
   return x

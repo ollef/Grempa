@@ -1,6 +1,6 @@
 konstanttidtables
 v TH - tables som görs under compile time
-LALR
+v LALR
 QuickCheck
 profiling - (Försöka få bort rev?)
 bättre errormeddelanden

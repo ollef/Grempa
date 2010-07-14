@@ -29,7 +29,7 @@ makeGraph' from (a:as) = do
     case a of
         RTTerm x -> do
             return
-              ( nodes ++ [(n, (shower x, red__, Circle))]
+              ( nodes ++ [(n, (show x, red__, Circle))]
               , edges ++ maybe [] (\x -> [(x, n, red__)]) from
               )
         RTReduce rule prod rt -> do
@@ -44,9 +44,6 @@ inc = do n <- get; put (n + 1); return n
 white = X11Color Transparent
 red__ = X11Color Red
 black = X11Color Black
-
-shower :: Show s => Maybe s -> String
-shower = maybe "$" show
 
 previewGraphviz :: Show s => [ReductionTree s] -> IO ()
 previewGraphviz = preview . makeGraph

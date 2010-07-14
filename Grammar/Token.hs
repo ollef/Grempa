@@ -16,11 +16,11 @@ data ETok s = ETok {unETok :: s}
 
 instance Functor Tok where
     fmap f (Tok s)  = Tok (f s)
-    fmap f RightEnd = RightEnd
+    fmap _ RightEnd = RightEnd
 
 instance Functor ETok where
     fmap f (ETok s) = ETok (f s)
-    fmap f Epsilon  = Epsilon
+    fmap _ Epsilon  = Epsilon
 
 class (Data s, Ord s, Show s) => Token s where
 instance (Data s, Ord s, Show s) => Token s where

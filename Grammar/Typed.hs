@@ -110,4 +110,5 @@ infixl 5 <@
      => a -> x -> Prod s a
 f <@ p = PSeqN (toSym p) $ PEnd f
 
+epsilon :: Typeable a => a -> Prod s a
 epsilon c = PEnd c

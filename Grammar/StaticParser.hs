@@ -69,5 +69,3 @@ thDriver :: (Token s, Typeable a) => T.GRId s a -> ([s] -> ReductionTree s) -> [
 thDriver g f inp = fromJust $ fromDynamic $ rtToTyped id funs (f inp)
   where
     funs = T.evalGrammar (snd <$> unType id <$> T.augment g)
-
-

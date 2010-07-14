@@ -91,5 +91,10 @@ gen g = GenData is ix rs ts nt sys ss g
 
 
 askItemSet :: (It i s, Token s) => Set (i s) -> Gen i s (Maybe Int)
-askItemSet x = M.lookup x <$> asks gItemSetIndex
-
+askItemSet x = do
+    res <- M.lookup x <$> asks gItemSetIndex
+    case res of
+        Just r  -> return $ Just r
+        Nothing -> do
+            is <- asks gItemSets
+            return $ snd <$> find (S.isSubsetOf x . fst) is

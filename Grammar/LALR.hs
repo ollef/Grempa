@@ -4,7 +4,6 @@ module LALR where
 import Control.Applicative
 import qualified Control.Arrow as A
 import "monads-fd" Control.Monad.Reader
-import "monads-fd" Control.Monad.State
 import Data.Map(Map)
 import qualified Data.Map as M
 import Data.Maybe
@@ -114,25 +113,18 @@ fromSLR (SLR.Item r prod pos) la = Item r prod pos la
 fromLALR :: Item s -> SLR.Item s
 fromLALR (Item r prod pos _) = SLR.Item r prod pos
 
-tracer s x = trace (s ++ show x) x
+tracer s x =  x -- trace (s ++ show x) x
 
 -- | Find the lookaheads of an SLR Item
 findLookaheads :: Token s
                => LookaheadTable s
                -> Int -> SLR.Item (Maybe s)
-               -> State (Map (Int, SLR.Item (Maybe s))
-                             (Set (Tok (Maybe s))))
-                        (Set (Tok (Maybe s)))
+               -> Done (Int, SLR.Item (Maybe s)) () (Set (Tok (Maybe s)))
 findLookaheads latable istate i = do
-    done <- gets $ M.lookup (istate, i)
-    case done of
-        Just toks -> return toks
-        Nothing   -> do
-            let las = MM.lookup (istate, i) latable
-            rec
-              modify $ M.insert (istate, i) res
-              res <- S.unions <$> mapM go (S.toList $ S.delete (PropFrom istate i) las)
-            return res
+    ifNotDoneG (istate, i) (const S.empty) $ do
+        let las = MM.lookup (istate, i) latable
+        putDone (istate, i) ()
+        S.unions <$> mapM go (S.toList $ las)
   where
     go (Spont s)        = return $ S.singleton s
     go (PropFrom st it) = findLookaheads latable st it
@@ -146,12 +138,11 @@ lalrItems = do
     syms <- asks gSymbols
     las <- zipWithM (\(i,n) (k,_) -> MM.unions <$> mapM (lookaheads n i k) syms) iss kss
     let tab = tracer "TAB: " $ MM.unions las
-    return $ tracer "LALRITEMS: " $ flip evalState M.empty $ do
-        sequence [ do
-            newi <- sequence [ toIts it <$> findLookaheads tab n it
-                             | it <- S.toList ks]
-            return $ (closure $ S.fromList $ concat newi, n)
-          | (ks, n) <- kss]
+    return $ tracer "LALRITEMS: " $
+        [ let newi = [ evalDone $ toIts it <$> findLookaheads tab n it
+                     | it <- S.toList ks]
+          in (closure $ tracer "LALRKERNEL: " $ S.fromList $ concat newi, n)
+        | (ks, n) <- kss]
   where
     toIts it   las = map (fromSLR it) $ remNothing las
     remNothing las = S.toList $ S.delete (Tok Nothing) las
@@ -165,11 +156,11 @@ slrGenToLalrGen g = let newits = runGen lalrItems g
 lalr :: Token s => RId s -> (ActionTable s, GotoTable s, Int)
 lalr g =
     let initSlr    = gen (Just <$> g)
-        init       = slrGenToLalrGen initSlr
-        cs         = gItemSets init
-        as         = M.unions [runGen (actions i) init | (i,_) <- cs]
-        gs         = M.unions [runGen (gotos   i) init | (i,_) <- cs]
-    in tracer "LALR: " $ (as, gs, gStartState init)
+        initg      = slrGenToLalrGen initSlr
+        cs         = gItemSets initg
+        as         = M.unions [runGen (actions i) initg | (i,_) <- cs]
+        gs         = M.unions [runGen (gotos   i) initg | (i,_) <- cs]
+    in tracer "LALR: " $ (as, gs, gStartState initg)
 
 -- | Create goto table
 gotos :: Token s
@@ -190,7 +181,7 @@ actions :: Token s
 actions items = do
     Just i <- askItemSet items
     start  <- asks gStartRule
-    rs     <- asks gRules
+    --rs     <- asks gRules
     let actions' item@Item {itemRId = rid@(RId ri _)} = case nextSymbol item of
             Tok a@(STerm (Just s)) -> do
                 j <- askItemSet $ goto items a

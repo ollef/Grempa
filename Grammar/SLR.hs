@@ -7,9 +7,6 @@ import qualified Data.Map as M
 import Data.Set(Set)
 import qualified Data.Set as S
 import Data.Maybe
-import Data.List
-
-import Debug.Trace
 
 import Aux
 import Item
@@ -56,11 +53,11 @@ closureLR0 = recTraverseG closure'
 -- | Create SLR parsing tables from a starting rule of a grammar (augmented)
 slr :: Token s => RId s -> (ActionTable s, GotoTable s, Int)
 slr g =
-    let init       = gen g
-        cs         = gItemSets init
-        as         = M.unions [runGen (actions i) init | (i,_) <- cs]
-        gs         = M.unions [runGen (gotos   i) init | (i,_) <- cs]
-    in (as, gs, gStartState init)
+    let initg      = gen g
+        cs         = gItemSets initg
+        as         = M.unions [runGen (actions i) initg | (i,_) <- cs]
+        gs         = M.unions [runGen (gotos   i) initg | (i,_) <- cs]
+    in (as, gs, gStartState initg)
 
 -- | Create goto table
 gotos :: Token s => Set (Item s) -> Gen Item s (GotoTable s)
@@ -98,17 +95,3 @@ actions items = do
         <$> sequence
             [map (A.first ((,) i)) <$> actions' it | it <- S.toList items]
 
-driver :: Token s => (ActionFun s, GotoFun s, Int) -> [s] -> ReductionTree s
-driver (actionf, gotof, start) input =
-    driver' [start] (map Tok input ++ [RightEnd]) []
-  where
-    driver' stack@(s:_) (a:rest) rt = trace (show stack ++ "," ++ show (a:rest) ) $ 
-      case actionf (s, a) of
-        Shift t -> driver' (t : stack) rest (RTTerm (unTok a) : rt)
-        Reduce rule (prod, len) -> driver' (got : stack') (a : rest) rt'
-          where
-            stack'@(t:_) = drop len stack
-            got          = gotof (t, rule)
-            rt' = RTReduce rule prod (reverse $ take len rt) : drop len rt
-        Accept -> head rt
-    driver' _ _ _ = error "driver'"

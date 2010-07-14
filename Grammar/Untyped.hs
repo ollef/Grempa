@@ -98,33 +98,17 @@ terminals = concatMap (\(RId _ rs) -> [STerm s | as <- rs, STerm s <- as])
 nonTerminals :: Token s => [RId s] -> [Symbol s]
 nonTerminals = map SRule
 
-type Done k v = State (Map k v)
-type DoneA k v = Done k v v
-
-getDone :: Ord k => k -> Done k v (Maybe v)
-getDone = gets . M.lookup
-
-putDone :: Ord k => k -> v -> Done k v ()
-putDone = modify `dot` M.insert
-
-evalDone :: Done k v a -> a
-evalDone = flip evalState M.empty
-
 -- | Get the first tokens that a symbol eats
 first :: Token s => Symbol s -> Set (ETok s)
 first = evalDone . first'
 
 first' :: Token s => Symbol s -> DoneA (RId s) (Set (ETok s))
 first' (STerm s)             = return $ S.singleton (ETok s)
-first' (SRule rid@(RId _ r)) = do
-    d <- getDone rid
-    case d of
-        Just x  -> return x
-        Nothing -> do
-          rec
-            putDone rid res
-            res <- S.unions <$> mapM firstProd' r
-          return res
+first' (SRule rid@(RId _ r)) = ifNotDone rid $ do
+    rec
+      putDone rid res
+      res <- S.unions <$> mapM firstProd' r
+    return res
 
 -- | Get the first tokens of a production
 firstProd :: Token s => Prod s -> Set (ETok s)
@@ -143,20 +127,14 @@ firstProd' (x:xs) = do
 follow :: Token s => RId s -> RId s -> [RId s] -> Set (Tok s)
 follow rid = evalDone `dot` follow' rid
 
-follow' :: Token s => RId s -> RId s -> [RId s] -> DoneA (RId s) (Set (Tok s))
-follow' rid startrid rids = do
-    d <- getDone rid
-    case d of
-        Just x  -> return x
-        Nothing -> do
-          rec
-            putDone rid res
-            res <- (if rid == startrid then S.insert RightEnd else id)
-                <$> S.unions
-                <$> sequence [followProd prod a
-                                 | a@(RId _ prods) <- rids
-                                 , prod <- prods]
-          return res
+follow' :: Token s => RId s -> RId s -> [RId s] -> Done (RId s) () (Set (Tok s))
+follow' rid startrid rids = ifNotDoneG rid (const S.empty) $ do
+    putDone rid ()
+    (if rid == startrid then S.insert RightEnd else id)
+        <$> S.unions
+        <$> sequence [followProd prod a
+                         | a@(RId _ prods) <- rids
+                         , prod <- prods]
   where
     followProd []       _ = return S.empty
     followProd (b:beta) a

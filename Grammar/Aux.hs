@@ -1,4 +1,8 @@
+{-# LANGUAGE PackageImports #-}
 module Aux where
+import "monads-fd" Control.Monad.State
+import Data.Map(Map)
+import qualified Data.Map as M
 import Data.Maybe
 import Data.Set(Set)
 import qualified Data.Set as S
@@ -25,3 +29,26 @@ recTraverse f = recTraverseG $ split . f
 
 dot :: (c -> d) -> (a -> b -> c) -> a -> b -> d
 dot = (.) . (.)
+
+type Done k v = State (Map k v)
+type DoneA k v = Done k v v
+
+getDone :: Ord k => k -> Done k v (Maybe v)
+getDone = gets . M.lookup
+
+ifNotDoneG :: Ord k => k -> (v -> a) -> Done k v a -> Done k v a
+ifNotDoneG k ifDone action = do
+    done <- getDone k
+    case done of
+        Just x  -> return $ ifDone x
+        Nothing -> action
+
+ifNotDone :: Ord k => k -> DoneA k v -> DoneA k v
+ifNotDone = flip ifNotDoneG id
+
+putDone :: Ord k => k -> v -> Done k v ()
+putDone = modify `dot` M.insert
+
+evalDone :: Done k v a -> a
+evalDone = flip evalState M.empty
+
