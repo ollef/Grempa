@@ -16,3 +16,6 @@ parseEx = $(mkStaticParser ex [|ex|])
 
 parseEx454 :: String -> Sx
 parseEx454 = $(mkStaticParser ex454 [|ex454|])
+
+parseE1 :: [Sym] -> E1
+parseE1 = $(mkStaticParser e1 [|e1|])

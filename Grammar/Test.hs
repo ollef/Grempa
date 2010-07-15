@@ -1,9 +1,13 @@
-{-# LANGUAGE DoRec, DeriveDataTypeable #-}
+{-# LANGUAGE TemplateHaskell, DoRec, DeriveDataTypeable #-}
 module Test where
 
-import Typed
 import Data.Typeable
 import Data.Data
+import Language.Haskell.TH.Lift
+
+import StaticParser
+import Typed
+
 
 
 ----------------------------- TEST GRAMMARS -----
@@ -33,6 +37,9 @@ data Sym = Ident String
          | LParen
          | RParen
   deriving (Eq, Ord, Data, Typeable, Show, Read)
+
+instance ConstrTok Sym where
+$(deriveLift ''Sym)
 
 data E1 = E1 :++: E1
         | E1 :**: E1

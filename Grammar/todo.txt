@@ -1,9 +1,12 @@
 konstanttidtables
 v TH - tables som görs under compile time
+  v gör så att konstruktorkomp fungerar
 v LALR
 QuickCheck
 profiling - (Försöka få bort rev?)
-bättre errormeddelanden
+v bättre errormeddelanden
+  funkar inte helt för ex ("x=x=x")
+errormeddelanden för konflikter
 deriving read
 v Skönare syntax (med lite klasser)
 v markera produktioner som inte ska vara med som resultat (gör det snyggare?)

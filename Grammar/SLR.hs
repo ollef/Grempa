@@ -1,8 +1,8 @@
-{-# LANGUAGE PackageImports, FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE TupleSections, PackageImports, FlexibleInstances, MultiParamTypeClasses #-}
 module SLR where
 import Control.Applicative
-import qualified Control.Arrow as A
 import "monads-fd" Control.Monad.Reader
+import Data.Map(Map)
 import qualified Data.Map as M
 import Data.Set(Set)
 import qualified Data.Set as S
@@ -55,24 +55,24 @@ slr :: Token s => RId s -> (ActionTable s, GotoTable s, Int)
 slr g =
     let initg      = gen g
         cs         = gItemSets initg
-        as         = M.unions [runGen (actions i) initg | (i,_) <- cs]
-        gs         = M.unions [runGen (gotos   i) initg | (i,_) <- cs]
+        as         = M.fromList [runGen (actions i) initg | (i,_) <- cs]
+        gs         = M.fromList [runGen (gotos   i) initg | (i,_) <- cs]
     in (as, gs, gStartState initg)
 
 -- | Create goto table
-gotos :: Token s => Set (Item s) -> Gen Item s (GotoTable s)
+gotos :: Token s => Set (Item s) -> Gen Item s (StateI, Map RuleI StateI)
 gotos items = do
     Just i <- askItemSet items
     nt     <- asks gNonTerminals
-    M.fromList <$> catMaybes <$> sequence
+    (i,) <$> M.fromList <$> catMaybes <$> sequence
         [do j <- askItemSet (goto items a)
             return $ case j of
                 Nothing -> Nothing
-                Just x  -> Just ((i, ai), x)
+                Just x  -> Just (ai, x)
           | a@(SRule (RId ai _)) <- nt]
 
 -- | Create action table
-actions :: Token s => Set (Item s) -> Gen Item s (ActionTable s)
+actions :: Token s => Set (Item s) -> Gen Item s (StateI, (Map (Tok s) (Action s), Action s))
 actions items = do
     Just i <- askItemSet items
     start  <- asks gStartRule
@@ -86,12 +86,17 @@ actions items = do
             RightEnd
                 | rid /= start -> do
                     let as = S.toList $ follow rid start rs
-                    return [(a, Reduce ri (itProd item, length (getItProd item)))
+                    return [(a, Reduce ri (itProd item) (length $ getItProd item) [])
                            | a <- as]
                 | otherwise     -> return [(RightEnd, Accept)]
             _ -> return []
-    M.fromList
-        <$> concat
-        <$> sequence
-            [map (A.first ((,) i)) <$> actions' it | it <- S.toList items]
-
+    tab <- M.unions <$> sequence
+        [M.fromList <$> actions' it | it <- S.toList items]
+    return (i, (mapShifts tab, def (mapShifts tab)))
+  where
+    def tab = case M.null (reds tab) of
+        True  -> Error $ M.keys $ shifts tab
+        False -> head  $ M.elems (reds tab)
+    mapShifts tab = M.map (\(Reduce r pr p _) -> Reduce r pr p $ M.keys $ shifts tab) tab
+    reds   tab = M.filter isReduce tab
+    shifts tab = M.filter (not . isReduce) tab

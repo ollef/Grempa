@@ -1,13 +1,21 @@
-{-# LANGUAGE DeriveDataTypeable, UndecidableInstances, FlexibleInstances #-}
+{-# LANGUAGE TemplateHaskell, DeriveDataTypeable, UndecidableInstances, FlexibleInstances #-}
 module Token where
 
 import Data.Typeable
 import Data.Data
 import Data.Function
+import Language.Haskell.TH.Lift
 
-data Tok s  = Tok {unTok :: s}
+data Tok s  = Tok s
             | RightEnd
-  deriving (Eq, Ord, Show)
+            | GenError
+  deriving (Eq, Ord, Show, Data, Typeable)
+
+unTok :: Tok s -> s
+unTok (Tok s) = s
+unTok _       = error "unTok"
+
+$(deriveLift ''Tok)
 
 -- Data type for token or epsilon
 data ETok s = ETok {unETok :: s}

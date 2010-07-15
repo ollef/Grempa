@@ -14,6 +14,7 @@ import Table
 import Token
 import qualified Typed as T
 
+
 -- | The recursive data types for untyped grammars
 type Rule s = [Prod s]
 type Prod s = [Symbol s]
@@ -23,7 +24,7 @@ data Symbol s
     | SRule (RId s)
   deriving (Eq, Ord, Show)
 
-data RId s = RId {rId :: Int, rIdRule :: Rule s}
+data RId s = RId {rId :: RuleI, rIdRule :: Rule s}
 
 instance Show (RId s) where
     show (RId i _) = show i

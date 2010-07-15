@@ -17,7 +17,7 @@ runSLRG c g inp = do
     g' <- T.augment g
     let (unt, funs) = unType c g'
         (at,gt,st)  = lalr unt
-        res         = driver (toFun actionError at, toFun gotoError gt, st) $ map c inp
+        res         = driver (actToFun at, gotoToFun gt, st) $ map c inp
     return (res, funs)
 
 runSLRGRes :: (Token s, Token s', Typeable a)
@@ -31,8 +31,3 @@ runSLR  = runSLRGRes id id
 
 runSLRC :: (Token s, Typeable a) => T.GRId s a -> [s] -> T.Grammar s a
 runSLRC = runSLRGRes CTok unCTok
-
-actionError, gotoError :: String
-actionError = "ActionTable"
-gotoError   = "GotoTable"
-

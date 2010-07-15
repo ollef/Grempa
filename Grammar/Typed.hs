@@ -24,11 +24,11 @@ data Symbol s a where
 
 data RId s a where
   RId :: (Typeable s, Typeable a)
-      => {rId :: Int, rIdRule :: Rule s a} -> RId s a
+      => {rId :: RuleI, rIdRule :: Rule s a} -> RId s a
   deriving Typeable
 
 data GrammarState s = GrammarState
-    { ids   :: [Int]
+    { ids   :: [RuleI]
     }
 
 type Grammar s a = State (GrammarState s) a

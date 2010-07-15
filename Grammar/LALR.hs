@@ -1,4 +1,4 @@
-{-# LANGUAGE DoRec, FlexibleInstances, MultiParamTypeClasses, PackageImports #-}
+{-# LANGUAGE TupleSections, DoRec, FlexibleInstances, MultiParamTypeClasses, PackageImports #-}
 module LALR where
 
 import Control.Applicative
@@ -113,7 +113,7 @@ fromSLR (SLR.Item r prod pos) la = Item r prod pos la
 fromLALR :: Item s -> SLR.Item s
 fromLALR (Item r prod pos _) = SLR.Item r prod pos
 
-tracer s x =  x -- trace (s ++ show x) x
+tracer s x =  trace (s ++ show x) x
 
 -- | Find the lookaheads of an SLR Item
 findLookaheads :: Token s
@@ -158,30 +158,29 @@ lalr g =
     let initSlr    = gen (Just <$> g)
         initg      = slrGenToLalrGen initSlr
         cs         = gItemSets initg
-        as         = M.unions [runGen (actions i) initg | (i,_) <- cs]
-        gs         = M.unions [runGen (gotos   i) initg | (i,_) <- cs]
+        as         = M.fromList [runGen (actions i) initg | (i,_) <- cs]
+        gs         = M.fromList [runGen (gotos   i) initg | (i,_) <- cs]
     in tracer "LALR: " $ (as, gs, gStartState initg)
 
 -- | Create goto table
 gotos :: Token s
-      => Set (Item (Maybe s)) -> Gen Item (Maybe s) (GotoTable s)
+      => Set (Item (Maybe s)) -> Gen Item (Maybe s) (StateI, Map RuleI StateI)
 gotos items = do
     Just i <- askItemSet items
     nt     <- asks gNonTerminals
-    M.fromList <$> catMaybes <$> sequence
+    (i,) <$> M.fromList <$> catMaybes <$> sequence
         [do j <- askItemSet (goto items a)
             return $ case j of
                 Nothing -> Nothing
-                Just x  -> Just ((i, ai), x)
+                Just x  -> Just (ai, x)
           | a@(SRule (RId ai _)) <- nt]
 
 -- | Create action table
 actions :: Token s
-        => Set (Item (Maybe s)) -> Gen Item (Maybe s) (ActionTable s)
+        => Set (Item (Maybe s)) -> Gen Item (Maybe s) (StateI, (Map (Tok s) (Action s), Action s))
 actions items = do
     Just i <- askItemSet items
     start  <- asks gStartRule
-    --rs     <- asks gRules
     let actions' item@Item {itemRId = rid@(RId ri _)} = case nextSymbol item of
             Tok a@(STerm (Just s)) -> do
                 j <- askItemSet $ goto items a
@@ -192,11 +191,19 @@ actions items = do
                 | rid /= start ->
                     return
                         [ ( fromJust <$> itemLA item
-                          , Reduce ri ( itProd item
-                                      , length $ getItProd item))]
+                          , Reduce ri (itProd item)
+                                      (length $ getItProd item) [])]
                 | itemLA item == RightEnd -> return [(RightEnd, Accept)]
             _ -> return []
-    M.fromList
-        <$> concat
-        <$> sequence
-            [map (A.first ((,) i)) <$> actions' it | it <- S.toList items]
+    tab <- M.unions <$> sequence
+            [M.fromList <$> actions' it | it <- S.toList items]
+    return (i, (mapShifts tab, def (mapShifts tab)))
+  where
+    def tab = case M.null (reds tab) of
+        True  -> Error $ M.keys $ shifts tab
+        False -> head  $ M.elems (reds tab)
+    mapShifts tab = M.map (addShifts $ M.keys $ shifts tab) tab
+      where addShifts ss (Reduce r pr p _) = Reduce r pr p ss
+            addShifts _  x                 = x
+    reds   tab = M.filter isReduce tab
+    shifts tab = M.filter (not . isReduce) tab

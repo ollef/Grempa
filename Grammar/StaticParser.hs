@@ -1,21 +1,23 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell, OverlappingInstances, FlexibleInstances, UndecidableInstances #-}
 module StaticParser where
 
 import Control.Applicative
 import Data.Dynamic
 import Data.Maybe
-import Data.Map(Map, toList)
+import qualified Data.Map as M
+import Data.Data
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
 import LALR
-import SLR
 import Table
 import qualified Typed as T
 import Token
 import Untyped
 
-class ToPat a where
+class (Token s, Data s) => ConstrTok s where
+
+class Lift a => ToPat a where
     toPat :: a -> PatQ
 
 instance ToPat Char where
@@ -34,30 +36,62 @@ instance ToPat a => ToPat (Tok a) where
 instance ToPat a => ToPat [a] where
     toPat = listP . map toPat
 
-mkFunMap :: (ToPat a, Lift b) => Map a b -> ExpQ
-mkFunMap = mkFun . toList
+instance (ConstrTok a, Lift a) => ToPat a where
+    toPat x = do
+        let name = mkName $ show $ toConstr x
+        info <-reify name
+        case info of
+            DataConI _ t _ _ -> conP name $ replicate (numArgs t) wildP
 
-mkFun :: (ToPat a, Lift b) => [(a,b)] -> ExpQ
-mkFun ms = do
-    x <- newName "x"
-    lam1E (varP x)
-        $ caseE (varE x)
-            $ map mkMatch ms
-                ++ [match wildP (normalB [|error "Couldn't match"|]) []]
+numArgs :: Type -> Int
+numArgs (AppT t1 t2) = 1 + numArgs t2
+numArgs _            = 0
+
+mkActFun :: (ToPat s, Data s, Lift s) => ActionTable s -> ExpQ
+mkActFun tab = do
+    st  <- newName "st"
+    tok <- newName "tok"
+    lamE [varP st, varP tok]
+        $ caseE (varE st)
+            $ map (mkMatch tok) (M.toList tab)
+                ++ [match wildP (normalB [|error "Invalid parsing state"|]) []]
   where
-    mkMatch (a,b) = match (toPat a) (normalB [|b|]) []
+    mkMatch tok (st, (tokTab, def)) =
+        match (toPat st) (normalB
+            ( caseE (varE tok)
+                $ map mkMatch' (M.toList tokTab)
+                    ++ [match wildP (normalB [|def|]) []]
+            )) []
+    mkMatch' (v, res) = match (toPat v) (normalB [|res|]) []
 
-runSLRGTH :: (Typeable a)
-          => T.GRId Char a -> (ExpQ, ProdFuns)
+mkGotoFun :: GotoTable s -> ExpQ
+mkGotoFun tab = do
+    st <- newName "st"
+    r <- newName "r"
+    lamE [varP st, varP r]
+        $ caseE (varE st)
+            $ map (mkMatch r) (M.toList tab)
+                ++ [match wildP (normalB [|error "Invalid parsing state"|]) []]
+  where
+    mkMatch r (st, tab') =
+        match (toPat st) (normalB
+            ( caseE (varE r)
+                $ map mkMatch' (M.toList tab')
+                    ++ [match wildP (normalB [|error "Goto table"|]) []]
+            )) []
+    mkMatch' (v, res) = match (toPat v) (normalB [|res|]) []
+
+runSLRGTH :: (Typeable a, ToPat s, Token s)
+          => T.GRId s a -> (ExpQ, ProdFuns)
 runSLRGTH g = T.evalGrammar $ do
     g' <- T.augment g
     let (unt, funs) = unType id g'
         (at,gt,st)  = lalr unt
-        res         = [|driver ($(mkFunMap at), $(mkFunMap gt), st) |]
+        res         = [|driver ($(mkActFun at), $(mkGotoFun gt), st)|]
     return (res, funs)
 
-mkStaticParser :: (Typeable a)
-             => T.GRId Char a -> ExpQ -> ExpQ
+mkStaticParser :: (Typeable a, ToPat s, Token s)
+               => T.GRId s a -> ExpQ -> ExpQ
 mkStaticParser g gn = do
     drive  <- newName "driver"
     let driverf = funD drive

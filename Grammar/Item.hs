@@ -11,11 +11,12 @@ import qualified Data.Set as S
 
 import Aux
 import Untyped
+import Table
 import Token
 
 class (Eq (i s), Ord (i s), Show (i s), Token s) => It i s where
     itRId     :: i s -> RId s
-    itProd    :: i s -> Int
+    itProd    :: i s -> ProdI
     getItPos  :: i s -> Int
     setItPos  :: i s -> Int -> i s
     closure   :: Set (i s) -> Set (i s)
