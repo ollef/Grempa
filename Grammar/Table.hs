@@ -78,7 +78,7 @@ driver :: Token s => (ActionFun s, GotoFun s, StateI) -> [s] -> ReductionTree s
 driver (actionf, gotof, start) input =
     driver' [start] (map Tok input ++ [RightEnd]) [] []
   where
-    driver' stack@(s:_) (a:rest) rt ests = trace (show stack ++ "," ++ show (a:rest) ) $
+    driver' stack@(s:_) (a:rest) rt ests = --trace (show stack ++ "," ++ show (a:rest) ) $
       case actionf s a of
           Shift t -> driver' (t : stack) rest (RTTerm (unTok a) : rt) []
           Reduce rule prod len es -> driver' (got : stack') (a : rest) rt' (es ++ ests)

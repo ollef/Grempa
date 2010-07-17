@@ -1,8 +1,11 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Test2 where
 
+import Test.QuickCheck
+
 import Test
 import StaticParser
+
 
 
 parseE :: String -> E
@@ -19,3 +22,5 @@ parseEx454 = $(mkStaticParser ex454 [|ex454|])
 
 parseE1 :: [Sym] -> E1
 parseE1 = $(mkStaticParser e1 [|e1|])
+
+prop_e e = parseE (shower e) == e

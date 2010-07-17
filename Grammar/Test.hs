@@ -1,12 +1,17 @@
 {-# LANGUAGE TemplateHaskell, DoRec, DeriveDataTypeable #-}
 module Test where
 
+import Control.Monad
+import Control.Applicative
+
 import Data.Typeable
 import Data.Data
 import Language.Haskell.TH.Lift
 
 import StaticParser
 import Typed
+
+import Test.QuickCheck
 
 
 
@@ -15,7 +20,23 @@ import Typed
 data E = E :+: E
        | E :*: E
        | Var
-  deriving (Show, Typeable)
+  deriving (Show, Eq, Typeable)
+
+shower x = go (show x)
+  where go (' ':cs) = go cs
+        go (':':cs) = go cs
+        go ('V':'a':'r':cs) = 'x' : go cs
+        go (x:cs) = x : go cs
+        go [] = []
+
+instance Arbitrary E where
+    arbitrary = arb 10
+      where
+        arb n = frequency
+            [ (n, liftM2 (:+:) (arb $ n - 1) (arb $ n - 1))
+            , (n, liftM2 (:*:) (arb $ n - 1) (arb $ n - 1))
+            , (10, return Var)
+            ]
 
 e :: GRId Char E
 e = do
