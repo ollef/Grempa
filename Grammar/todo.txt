@@ -1,6 +1,7 @@
 större exempel
 strukturera om i mappar
 rensa kod
+  få bort extensions om möjligt
 konstanttidtables?
 QuickCheck
 profiling - (Försöka få bort rev?)
@@ -11,5 +12,6 @@ v TH - tables som görs under compile time
 v LALR
 v bättre errormeddelanden
   funkar inte helt för ex ("x=x=x")
+  gör så att den ger tillbaka vilken position
 v Skönare syntax (med lite klasser)
 v markera produktioner som inte ska vara med som resultat (gör det snyggare?)
