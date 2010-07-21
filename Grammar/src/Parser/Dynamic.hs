@@ -3,6 +3,8 @@ module Parser.Dynamic where
 import Data.Array
 import Data.Data
 import Data.Dynamic
+import Data.Map(Map)
+import qualified Data.Map as M
 import Data.Maybe
 
 import Aux
