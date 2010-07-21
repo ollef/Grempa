@@ -62,8 +62,8 @@ itemSets rid rids = S.delete S.empty $ recTraverseG itemSets' c1
       where gs    = S.fromList [goto i x | i <- S.toList c, x <- symbols]
 
 data GenData i s = GenData
-  { gItemSets     :: [(Set (i s), Int)]
-  , gItemSetIndex :: Map (Set (i s)) Int
+  { gItemSets     :: [(Set (i s), StateI)]
+  , gItemSetIndex :: Map (Set (i s)) StateI
   , gRules        :: [RId s]
   , gTerminals    :: [Symbol s]
   , gNonTerminals :: [Symbol s]
@@ -91,7 +91,7 @@ gen g = GenData is ix rs ts nt sys ss g
               $ find (S.member (startItem g) . fst) is
 
 
-askItemSet :: (It i s, Token s) => Set (i s) -> Gen i s (Maybe Int)
+askItemSet :: (It i s, Token s) => Set (i s) -> Gen i s (Maybe StateI)
 askItemSet x = do
     res <- M.lookup x <$> asks gItemSetIndex
     case res of

@@ -4,6 +4,7 @@ module Grammar.Untyped where
 import Control.Arrow
 import Control.Applicative
 import "monads-fd" Control.Monad.State
+import Data.Array
 import qualified Data.Map as M
 import Data.Map(Map)
 import Data.Set(Set)

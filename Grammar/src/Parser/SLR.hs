@@ -55,14 +55,15 @@ slr :: Token s => RId s -> (ActionTable s, GotoTable s, Int)
 slr g =
     let initg      = gen g
         cs         = gItemSets initg
-        as         = M.fromList [runGen (actions i) initg | (i,_) <- cs]
-        gs         = M.fromList [runGen (gotos   i) initg | (i,_) <- cs]
+        as         = M.fromList [runGen (actions i) initg | i <- cs]
+        gs         = M.fromList [runGen (gotos   i) initg | i <- cs]
     in (as, gs, gStartState initg)
 
 -- | Create goto table
-gotos :: Token s => Set (Item s) -> Gen Item s (StateI, Map RuleI StateI)
-gotos items = do
-    Just i <- askItemSet items
+gotos :: Token s
+      => (Set (Item s), StateI)
+      -> Gen Item s (StateI, Map RuleI StateI)
+gotos (items, i) = do
     nt     <- asks gNonTerminals
     (i,) <$> M.fromList <$> catMaybes <$> sequence
         [do j <- askItemSet (goto items a)
@@ -72,9 +73,10 @@ gotos items = do
           | a@(SRule (RId ai _)) <- nt]
 
 -- | Create action table
-actions :: Token s => Set (Item s) -> Gen Item s (StateI, (Map (Tok s) (Action s), Action s))
-actions items = do
-    Just i <- askItemSet items
+actions :: Token s
+        => (Set (Item s), StateI)
+        -> Gen Item s (StateI, (Map (Tok s) (Action s), Action s))
+actions (items, i) = do
     start  <- asks gStartRule
     rs     <- asks gRules
     let actions' item@Item {itemRId = rid@(RId ri _)} = case nextSymbol item of

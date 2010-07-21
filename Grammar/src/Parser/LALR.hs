@@ -113,7 +113,7 @@ fromSLR (SLR.Item r prod pos) la = Item r prod pos la
 fromLALR :: Item s -> SLR.Item s
 fromLALR (Item r prod pos _) = SLR.Item r prod pos
 
-tracer s x =  trace (s ++ show x) x
+tracer s x =  x --trace (s ++ show x) x
 
 -- | Find the lookaheads of an SLR Item
 findLookaheads :: Token s
@@ -158,15 +158,15 @@ lalr g =
     let initSlr    = gen (Just <$> g)
         initg      = slrGenToLalrGen initSlr
         cs         = gItemSets initg
-        as         = M.fromList [runGen (actions i) initg | (i,_) <- cs]
-        gs         = M.fromList [runGen (gotos   i) initg | (i,_) <- cs]
+        as         = M.fromList [runGen (actions i) initg | i <- cs]
+        gs         = M.fromList [runGen (gotos   i) initg | i <- cs]
     in tracer "LALR: " $ (as, gs, gStartState initg)
 
 -- | Create goto table
 gotos :: Token s
-      => Set (Item (Maybe s)) -> Gen Item (Maybe s) (StateI, Map RuleI StateI)
-gotos items = do
-    Just i <- askItemSet items
+      => (Set (Item (Maybe s)), StateI)
+      -> Gen Item (Maybe s) (StateI, Map RuleI StateI)
+gotos (items, i) = do
     nt     <- asks gNonTerminals
     (i,) <$> M.fromList <$> catMaybes <$> sequence
         [do j <- askItemSet (goto items a)
@@ -177,16 +177,16 @@ gotos items = do
 
 -- | Create action table
 actions :: Token s
-        => Set (Item (Maybe s)) -> Gen Item (Maybe s) (StateI, (Map (Tok s) (Action s), Action s))
-actions items = do
-    Just i <- askItemSet items
+        => (Set (Item (Maybe s)), StateI)
+        -> Gen Item (Maybe s) (StateI, (Map (Tok s) (Action s), Action s))
+actions (items, i) = do
     start  <- asks gStartRule
     let actions' item@Item {itemRId = rid@(RId ri _)} = case nextSymbol item of
             Tok a@(STerm (Just s)) -> do
                 j <- askItemSet $ goto items a
                 case j of
                     Just x  -> return [(Tok s, Shift x)]
-                    Nothing -> trace ("NOTHING: " ++ show (i,a, items, goto items a)) $ return []
+                    Nothing -> return []
             RightEnd
                 | rid /= start ->
                     return
