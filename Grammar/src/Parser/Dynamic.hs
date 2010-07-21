@@ -1,4 +1,4 @@
-module DynamicParser where
+module Parser.Dynamic where
 
 import Data.Data
 import Data.Dynamic
@@ -10,9 +10,6 @@ import Parser.Table
 import Grammar.Token
 import qualified Grammar.Typed as T
 import Grammar.Untyped
-
-type ActionFun s   = StateI -> Tok s -> Action s
-type GotoFun   s   = StateI -> RuleI -> StateI
 
 actToFun :: Ord s => ActionTable s -> ActionFun s
 actToFun table st t = maybe def id $ M.lookup t stateTable
