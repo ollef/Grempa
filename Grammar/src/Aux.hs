@@ -1,6 +1,7 @@
 {-# LANGUAGE PackageImports #-}
 module Aux where
 import "monads-fd" Control.Monad.State
+import Data.Array
 import Data.Map(Map)
 import qualified Data.Map as M
 import Data.Maybe
@@ -51,4 +52,9 @@ putDone = modify `dot` M.insert
 
 evalDone :: Done k v a -> a
 evalDone = flip evalState M.empty
+
+mapToArr :: Ix k => Map k v -> Array k v
+mapToArr m = array (minimum keys, maximum keys) ass
+  where keys = map fst ass
+        ass  = M.toList m
 

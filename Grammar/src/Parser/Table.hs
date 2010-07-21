@@ -1,6 +1,7 @@
 {-# LANGUAGE TemplateHaskell, DeriveDataTypeable #-}
 module Parser.Table where
 
+import Data.Array
 import Data.Dynamic
 import Data.List
 import Data.Map(Map)
@@ -8,6 +9,7 @@ import qualified Data.Map as M
 import Data.Maybe
 import Language.Haskell.TH.Lift
 
+import Aux
 import Grammar.Token
 
 import Debug.Trace
@@ -41,15 +43,12 @@ type GotoTable   s = Map StateI (Map RuleI StateI)
 type ActionFun s   = StateI -> Tok s -> Action s
 type GotoFun   s   = StateI -> RuleI -> StateI
 
-actToFun :: Ord s => ActionTable s -> ActionFun s
-actToFun table st t = maybe def id $ M.lookup t stateTable
-  where
-    (stateTable, def) = maybe (error "Invalid parsing state") id $ M.lookup st table
+type ProdFunTable  = Map RuleI (Map ProdI DynFun)
+type ProdFunFun    = RuleI  -> ProdI -> DynFun
 
-gotoToFun :: GotoTable s -> GotoFun s
-gotoToFun table st rule = maybe (error "Goto table") id $ M.lookup rule table'
-  where
-    table' = maybe (error "Invalid parsing state") id $ M.lookup st table
+prodFunToFun :: ProdFunTable -> ProdFunFun
+prodFunToFun table r p = a ! r ! p
+  where a = mapToArr $ M.map mapToArr table
 
 -- | Data type for reduction trees output by the driver
 data ReductionTree s
@@ -65,14 +64,12 @@ applDynFun (DynFun f (b:bs)) (a:as)
     | otherwise = applDynFun (DynFun f bs) as
 applDynFun (DynFun f _) _ = f
 
-type ProdFuns = Map (RuleI, ProdI) DynFun
-
-rtToTyped :: Token s => (s' -> s) -> ProdFuns -> ReductionTree s' -> Dynamic
+rtToTyped :: Token s => (s' -> s) -> ProdFunFun -> ReductionTree s' -> Dynamic
 rtToTyped unc _    (RTTerm s)   = toDyn (unc s)
 rtToTyped unc funs (RTReduce r p tree) = applDynFun fun l
   where
     l           = map (rtToTyped unc funs) tree
-    fun         = fromJust $ M.lookup (r, p) funs
+    fun         = funs r p
 
 driver :: Token s => (ActionFun s, GotoFun s, StateI) -> [s] -> ReductionTree s
 driver (actionf, gotof, start) input =

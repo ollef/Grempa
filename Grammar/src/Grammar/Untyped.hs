@@ -37,28 +37,28 @@ instance Ord (RId s) where
 --   together with a mapping from rule and production number to
 --   a dynamic containing the construction function of the typed
 --   production
-unType :: (s -> s') -> T.RId s a -> (RId s', ProdFuns)
+type UnTypeState s' = State (Map Int (RId s'), ProdFunTable)
+unType :: (s -> s') -> T.RId s a -> (RId s', ProdFunTable)
 unType cs = second snd . flip runState (M.empty, M.empty) . unTypeR cs
   where
-    unTypeR :: (s -> s') -> T.RId s a -> State (Map Int (RId s'), ProdFuns) (RId s')
+    unTypeR :: (s -> s') -> T.RId s a -> UnTypeState s' (RId s')
     unTypeR c (T.RId i r) = do
         (rids, funs) <- get
         case M.lookup i rids of
             Just x  -> return x
             Nothing -> do
-                let newfuns = M.fromList
-                            $ zip (zip (repeat i) [0..])
-                                  (map T.getFun r)
+                let newfuns = M.singleton i $ M.fromList
+                            $ zip [0..] $ map T.getFun r
                 rec
                   put (M.insert i res rids, funs `M.union` newfuns)
                   res <- RId i <$> mapM ((reverse <$>) . unTypeP c) r
                 return res
-    unTypeP :: (s -> s') -> T.Prod s a -> State (Map Int (RId s'), ProdFuns) (Prod s')
+    unTypeP :: (s -> s') -> T.Prod s a -> UnTypeState s' (Prod s')
     unTypeP c p = case p of
         T.PSeq  s ps -> liftM2 (:) (unTypeS c s) (unTypeP c ps)
         T.PSeqN s ps -> liftM2 (:) (unTypeS c s) (unTypeP c ps)
         T.PEnd _    -> return []
-    unTypeS :: (s -> s') -> T.Symbol s a -> State (Map Int (RId s'), ProdFuns) (Symbol s')
+    unTypeS :: (s -> s') -> T.Symbol s a -> UnTypeState s' (Symbol s')
     unTypeS c s = case s of
         T.STerm t -> return $ STerm (c t)
         T.SRule r -> SRule <$> unTypeR c r
