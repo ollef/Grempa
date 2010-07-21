@@ -5,14 +5,10 @@ import Data.Array
 import Data.Dynamic
 import Data.List
 import Data.Map(Map)
-import qualified Data.Map as M
-import Data.Maybe
 import Language.Haskell.TH.Lift
 
 import Aux
 import Grammar.Token
-
-import Debug.Trace
 
 type StateI = Int
 type RuleI  = Int
@@ -37,18 +33,18 @@ isReduce _          = False
 
 $(deriveLift ''Action)
 
-type ActionTable s = Map StateI (Map (Tok s) (Action s), Action s)
-type GotoTable   s = Map StateI (Map RuleI StateI)
+type ActionTable s = [(StateI, (Map (Tok s) (Action s), Action s))]
+type GotoTable   s = [((StateI, RuleI), StateI)]
 
 type ActionFun s   = StateI -> Tok s -> Action s
 type GotoFun   s   = StateI -> RuleI -> StateI
 
-type ProdFunTable  = Map RuleI (Map ProdI DynFun)
+type ProdFunTable  = [((RuleI, ProdI), DynFun)]
 type ProdFunFun    = RuleI  -> ProdI -> DynFun
 
 prodFunToFun :: ProdFunTable -> ProdFunFun
-prodFunToFun table r p = a ! r ! p
-  where a = mapToArr $ M.map mapToArr table
+prodFunToFun table r p = a ! (r, p)
+  where a = listToArr table
 
 -- | Data type for reduction trees output by the driver
 data ReductionTree s

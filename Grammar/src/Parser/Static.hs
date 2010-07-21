@@ -53,7 +53,7 @@ mkActFun tab = do
     tok <- newName "tok"
     lamE [varP st, varP tok]
         $ caseE (varE st)
-            $ map (mkMatch tok) (M.toList tab)
+            $ map (mkMatch tok) tab
                 ++ [match wildP (normalB [|error "Invalid parsing state"|]) []]
   where
     mkMatch tok (st, (tokTab, def)) =
@@ -67,19 +67,14 @@ mkActFun tab = do
 mkGotoFun :: GotoTable s -> ExpQ
 mkGotoFun tab = do
     st <- newName "st"
-    r <- newName "r"
+    r  <- newName "r"
     lamE [varP st, varP r]
-        $ caseE (varE st)
-            $ map (mkMatch r) (M.toList tab)
-                ++ [match wildP (normalB [|error "Invalid parsing state"|]) []]
+        $ caseE (tupE [varE st, varE r])
+            $ map mkMatch tab
+            ++ [match wildP (normalB [|error "Invalid parsing state"|]) []]
   where
-    mkMatch r (st, tab') =
-        match (toPat st) (normalB
-            ( caseE (varE r)
-                $ map mkMatch' (M.toList tab')
-                    ++ [match wildP (normalB [|error "Goto table"|]) []]
-            )) []
-    mkMatch' (v, res) = match (toPat v) (normalB [|res|]) []
+    mkMatch (k, v) =
+        match (toPat k) (normalB [|v|]) []
 
 runSLRGTH :: (Typeable a, ToPat s, Token s)
           => T.GRId s a -> (ExpQ, ProdFunTable)

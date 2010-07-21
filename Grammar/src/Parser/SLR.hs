@@ -1,6 +1,7 @@
 {-# LANGUAGE TupleSections, PackageImports, FlexibleInstances, MultiParamTypeClasses #-}
 module Parser.SLR where
 import Control.Applicative
+import qualified Control.Arrow as A
 import "monads-fd" Control.Monad.Reader
 import Data.Map(Map)
 import qualified Data.Map as M
@@ -55,17 +56,17 @@ slr :: Token s => RId s -> (ActionTable s, GotoTable s, Int)
 slr g =
     let initg      = gen g
         cs         = gItemSets initg
-        as         = M.fromList [runGen (actions i) initg | i <- cs]
-        gs         = M.fromList [runGen (gotos   i) initg | i <- cs]
+        as         =        [runGen (actions i) initg | i <- cs]
+        gs         = concat [runGen (gotos   i) initg | i <- cs]
     in (as, gs, gStartState initg)
 
 -- | Create goto table
 gotos :: Token s
       => (Set (Item s), StateI)
-      -> Gen Item s (StateI, Map RuleI StateI)
+      -> Gen Item s [((StateI, RuleI), StateI)]
 gotos (items, i) = do
     nt     <- asks gNonTerminals
-    (i,) <$> M.fromList <$> catMaybes <$> sequence
+    map (A.first (i,)) <$> catMaybes <$> sequence
         [do j <- askItemSet (goto items a)
             return $ case j of
                 Nothing -> Nothing

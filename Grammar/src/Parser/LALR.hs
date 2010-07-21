@@ -158,17 +158,17 @@ lalr g =
     let initSlr    = gen (Just <$> g)
         initg      = slrGenToLalrGen initSlr
         cs         = gItemSets initg
-        as         = M.fromList [runGen (actions i) initg | i <- cs]
-        gs         = M.fromList [runGen (gotos   i) initg | i <- cs]
+        as         =        [runGen (actions i) initg | i <- cs]
+        gs         = concat [runGen (gotos   i) initg | i <- cs]
     in tracer "LALR: " $ (as, gs, gStartState initg)
 
 -- | Create goto table
 gotos :: Token s
       => (Set (Item (Maybe s)), StateI)
-      -> Gen Item (Maybe s) (StateI, Map RuleI StateI)
+      -> Gen Item (Maybe s) [((StateI, RuleI), StateI)]
 gotos (items, i) = do
     nt     <- asks gNonTerminals
-    (i,) <$> M.fromList <$> catMaybes <$> sequence
+    map (A.first (i,)) <$> catMaybes <$> sequence
         [do j <- askItemSet (goto items a)
             return $ case j of
                 Nothing -> Nothing

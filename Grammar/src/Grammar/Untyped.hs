@@ -4,7 +4,6 @@ module Grammar.Untyped where
 import Control.Arrow
 import Control.Applicative
 import "monads-fd" Control.Monad.State
-import Data.Array
 import qualified Data.Map as M
 import Data.Map(Map)
 import Data.Set(Set)
@@ -39,7 +38,7 @@ instance Ord (RId s) where
 --   production
 type UnTypeState s' = State (Map Int (RId s'), ProdFunTable)
 unType :: (s -> s') -> T.RId s a -> (RId s', ProdFunTable)
-unType cs = second snd . flip runState (M.empty, M.empty) . unTypeR cs
+unType cs = second snd . flip runState (M.empty, []) . unTypeR cs
   where
     unTypeR :: (s -> s') -> T.RId s a -> UnTypeState s' (RId s')
     unTypeR c (T.RId i r) = do
@@ -47,10 +46,10 @@ unType cs = second snd . flip runState (M.empty, M.empty) . unTypeR cs
         case M.lookup i rids of
             Just x  -> return x
             Nothing -> do
-                let newfuns = M.singleton i $ M.fromList
-                            $ zip [0..] $ map T.getFun r
+                let newfuns = zip (zip (repeat i) [0..])
+                                  (map T.getFun r)
                 rec
-                  put (M.insert i res rids, funs `M.union` newfuns)
+                  put (M.insert i res rids, funs ++ newfuns)
                   res <- RId i <$> mapM ((reverse <$>) . unTypeP c) r
                 return res
     unTypeP :: (s -> s') -> T.Prod s a -> UnTypeState s' (Prod s')

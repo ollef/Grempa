@@ -18,14 +18,13 @@ import Grammar.Untyped
 actToFun :: Ord s => ActionTable s -> ActionFun s
 actToFun table st t = maybe def id $ M.lookup t stateTable
   where
-    a                 = mapToArr table
+    a                 = listToArr table
     (stateTable, def) = a ! st
 
 gotoToFun :: GotoTable s -> GotoFun s
-gotoToFun table st rule = a ! st ! rule
+gotoToFun table st rule = a ! (st, rule)
   where
-    a      = mapToArr $ M.map mapToArr table
-
+    a      = listToArr table
 
 runSLRG :: (Token s', Token s, Typeable a) => (s -> s')
         -> T.GRId s a -> [s] -> T.Grammar s (ReductionTree s', ProdFunTable)

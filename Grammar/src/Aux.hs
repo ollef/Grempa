@@ -53,8 +53,28 @@ putDone = modify `dot` M.insert
 evalDone :: Done k v a -> a
 evalDone = flip evalState M.empty
 
-mapToArr :: Ix k => Map k v -> Array k v
-mapToArr m = array (minimum keys, maximum keys) ass
+-- | Convert a map to an array
+--   Uses minimum and maximum, which means that the Ix and Num instances
+--   must comply.
+class IxMinMax a where
+    ixMax :: [a] -> a
+    ixMin :: [a] -> a
+
+instance IxMinMax Int where
+    ixMax = maximum
+    ixMin = minimum
+
+instance (IxMinMax a, IxMinMax b) => IxMinMax (a, b) where
+    ixMax xs = (ixMax fs, ixMax ss)
+      where (fs, ss) = unzip xs
+    ixMin xs = (ixMin fs, ixMin ss)
+      where (fs, ss) = unzip xs
+
+listToArr :: (IxMinMax k, Ix k) => [(k, v)] -> Array k v
+listToArr ass = array (ixMin keys, ixMax keys) ass
   where keys = map fst ass
-        ass  = M.toList m
+
+--mapToArr :: (IxMinMax k, Ix k) => Map k v -> Array k v
+--mapToArr m = listToArr $ M.toList m
+
 
