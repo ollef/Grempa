@@ -1,9 +1,11 @@
 module Parser.Dynamic where
 
+import Data.Array
 import Data.Data
 import Data.Dynamic
 import Data.Maybe
 
+import Aux
 import Parser.SLR
 import Parser.LALR
 import Parser.Table
