@@ -6,8 +6,6 @@ import Test.QuickCheck
 import Test
 import Parser.Static
 
-
-
 parseE :: String -> E
 parseE = $(mkStaticParser e [|e|])
 

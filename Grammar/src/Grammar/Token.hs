@@ -8,7 +8,6 @@ import Language.Haskell.TH.Lift
 
 data Tok s  = Tok s
             | RightEnd
-            -- | GenError
   deriving (Eq, Ord, Show, Data, Typeable)
 
 unTok :: Tok s -> s

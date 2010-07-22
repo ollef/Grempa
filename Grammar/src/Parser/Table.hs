@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, DeriveDataTypeable #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Parser.Table where
 
 import Data.Array

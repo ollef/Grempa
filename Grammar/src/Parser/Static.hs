@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell, OverlappingInstances, FlexibleInstances, UndecidableInstances #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Parser.Static where
 
 import Control.Applicative
@@ -15,9 +15,7 @@ import qualified Grammar.Typed as T
 import Grammar.Token
 import Grammar.Untyped
 
-class (Token s, Data s) => ConstrTok s where
-
-class Lift a => ToPat a where
+class ToPat a where
     toPat :: a -> PatQ
 
 instance ToPat Char where
@@ -36,16 +34,17 @@ instance ToPat a => ToPat (Tok a) where
 instance ToPat a => ToPat [a] where
     toPat = listP . map toPat
 
-instance (ConstrTok a, Lift a) => ToPat a where
-    toPat x = do
-        let name = mkName $ show $ toConstr x
-        info <-reify name
-        case info of
-            DataConI _ t _ _ -> conP name $ replicate (numArgs t) wildP
+toConstrPat :: (Token s, Lift s) => s -> PatQ
+toConstrPat x = do
+    let name = mkName $ show $ toConstr x
+    info <-reify name
+    case info of
+        DataConI n t _ _ -> conP n $ replicate (numArgs t) wildP
+        _                -> undefined
 
 numArgs :: Type -> Int
-numArgs (AppT t1 t2) = 1 + numArgs t2
-numArgs _            = 0
+numArgs (AppT _ t2) = 1 + numArgs t2
+numArgs _           = 0
 
 mkActFun :: (ToPat s, Data s, Lift s) => ActionTable s -> ExpQ
 mkActFun tab = do
@@ -76,7 +75,7 @@ mkGotoFun tab = do
     mkMatch (k, v) =
         match (toPat k) (normalB [|v|]) []
 
-runSLRGTH :: (Typeable a, ToPat s, Token s)
+runSLRGTH :: (Typeable a, ToPat s, Token s, Lift s)
           => T.GRId s a -> (ExpQ, ProdFunTable)
 runSLRGTH g = T.evalGrammar $ do
     g' <- T.augment g
@@ -85,7 +84,7 @@ runSLRGTH g = T.evalGrammar $ do
         res         = [|driver ($(mkActFun at), $(mkGotoFun gt), st)|]
     return (res, funs)
 
-mkStaticParser :: (Typeable a, ToPat s, Token s)
+mkStaticParser :: (Typeable a, ToPat s, Token s, Lift s)
                => T.GRId s a -> ExpQ -> ExpQ
 mkStaticParser g gn = do
     drive  <- newName "driver"

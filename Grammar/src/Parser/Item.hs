@@ -51,7 +51,7 @@ goto is s = closure $ setFromJust $ S.map (nextTest s) is
 nextItPos :: It i s => i s -> i s
 nextItPos i = setItPos i $ getItPos i + 1
 
--- TODO: Make these functions use Gen in some way
+-- TODO: Make these functions use Gen in some way?
 -- | The sets of items for a grammar
 itemSets :: (It i s, Token s) => RId s -> [RId s] -> Set (Set (i s))
 itemSets rid rids = S.delete S.empty $ recTraverseG itemSets' c1

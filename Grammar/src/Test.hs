@@ -13,8 +13,6 @@ import Grammar.Typed
 
 import Test.QuickCheck
 
-
-
 ----------------------------- TEST GRAMMARS -----
 
 data E = E :+: E
@@ -59,8 +57,9 @@ data Sym = Ident String
          | RParen
   deriving (Eq, Ord, Data, Typeable, Show, Read)
 
-instance ConstrTok Sym where
 $(deriveLift ''Sym)
+
+instance ToPat Sym where toPat = toConstrPat
 
 data E1 = E1 :++: E1
         | E1 :**: E1
