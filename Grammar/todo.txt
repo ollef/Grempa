@@ -1,12 +1,13 @@
 större exempel
-strukturera om i mappar
 rensa kod
   få bort extensions om möjligt
 konstanttidtables?
 QuickCheck
 profiling - (Försöka få bort rev?)
 errormeddelanden för konflikter
+kolla kompat. med ByteString
 deriving read
+v strukturera om i mappar
 v TH - tables som görs under compile time
   v gör så att konstruktorkomp fungerar
 v LALR
