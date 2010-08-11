@@ -1,4 +1,5 @@
 större exempel
+gör så att rule använder en writermonad istället för listor
 rensa kod
   få bort extensions om möjligt
 konstanttidtables?
@@ -13,6 +14,6 @@ v TH - tables som görs under compile time
 v LALR
 v bättre errormeddelanden
   funkar inte helt för ex ("x=x=x")
-  gör så att den ger tillbaka vilken position
+  v gör så att den ger tillbaka vilken position
 v Skönare syntax (med lite klasser)
 v markera produktioner som inte ska vara med som resultat (gör det snyggare?)

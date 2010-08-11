@@ -107,6 +107,14 @@ data L = Star R | LIdent
 data R = R L
   deriving (Show, Typeable)
 
+{-
+S ::=  L = R
+    |  R
+L ::= *R
+    |  x
+R ::=  L
+-}
+
 ex :: GRId Char S
 ex = do
   rec
@@ -116,6 +124,7 @@ ex = do
               ,LIdent <@ 'x']
     r <- rule [R      <@> l]
   return s
+
 
 data Sx = Sx C C deriving (Show, Typeable)
 data C  = Cc C | Cd deriving (Show, Typeable)

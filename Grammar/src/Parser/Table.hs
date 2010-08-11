@@ -69,16 +69,16 @@ rtToTyped unc funs (RTReduce r p tree) = applDynFun fun l
 
 driver :: Token s => (ActionFun s, GotoFun s, StateI) -> [s] -> ReductionTree s
 driver (actionf, gotof, start) input =
-    driver' [start] (map Tok input ++ [RightEnd]) [] []
+    driver' [start] (map Tok input ++ [RightEnd]) [] [] 0
   where
-    driver' stack@(s:_) (a:rest) rt ests = --trace (show stack ++ "," ++ show (a:rest) ) $
+    driver' stack@(s:_) (a:rest) rt ests pos = --trace (show stack ++ "," ++ show (a:rest) ) $
       case actionf s a of
-          Shift t -> driver' (t : stack) rest (RTTerm (unTok a) : rt) []
-          Reduce rule prod len es -> driver' (got : stack') (a : rest) rt' (es ++ ests)
+          Shift t -> driver' (t : stack) rest (RTTerm (unTok a) : rt) [] (pos + 1)
+          Reduce rule prod len es -> driver' (got : stack') (a : rest) rt' (es ++ ests) pos
             where
               stack'@(t:_) = drop len stack
               got          = gotof t rule
               rt' = RTReduce rule prod (reverse $ take len rt) : drop len rt
           Accept -> head rt
-          Error es -> error $ show $ nub $ es ++ ests
-    driver' _ _ _ _ = error "driver'"
+          Error es -> error $ "Parse error at " ++ show pos ++ ", expecting " ++ show (nub $ es ++ ests)
+    driver' _ _ _ _ pos = error $ "Oh snap! Parse error at " ++ show pos

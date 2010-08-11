@@ -113,7 +113,7 @@ fromSLR (SLR.Item r prod pos) la = Item r prod pos la
 fromLALR :: Item s -> SLR.Item s
 fromLALR (Item r prod pos _) = SLR.Item r prod pos
 
-tracer s x =  x --trace (s ++ show x) x
+tracer s x = trace (s ++ show x) x
 
 -- | Find the lookaheads of an SLR Item
 findLookaheads :: Token s
@@ -158,8 +158,8 @@ lalr g =
     let initSlr    = gen (Just <$> g)
         initg      = slrGenToLalrGen initSlr
         cs         = gItemSets initg
-        as         =        [runGen (actions i) initg | i <- cs]
-        gs         = concat [runGen (gotos   i) initg | i <- cs]
+        as         = tracer "actions" $ [runGen (actions i) initg | i <- cs]
+        gs         = tracer "gotos" $ concat [runGen (gotos   i) initg | i <- cs]
     in tracer "LALR: " $ (as, gs, gStartState initg)
 
 -- | Create goto table
