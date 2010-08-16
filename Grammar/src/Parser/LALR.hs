@@ -120,9 +120,9 @@ findLookaheads :: Token s
                => LookaheadTable s
                -> Int -> SLR.Item (Maybe s)
                -> Done (Int, SLR.Item (Maybe s)) () (Set (Tok (Maybe s)))
-findLookaheads latable istate i = do
+findLookaheads latable istate i = trace "findLAs" $ do
     ifNotDoneG (istate, i) (const S.empty) $ do
-        let las = MM.lookup (istate, i) latable
+        let las = tracer "LALALA: " $ MM.lookup (istate, i) latable
         putDone (istate, i) ()
         S.unions <$> mapM go (S.toList $ las)
   where

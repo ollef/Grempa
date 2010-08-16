@@ -14,6 +14,8 @@ import Parser.Table
 import Grammar.Token
 import qualified Grammar.Typed as T
 
+import Debug.Trace
+
 -- | The recursive data types for untyped grammars
 type Rule s = [Prod s]
 type Prod s = [Symbol s]
@@ -102,19 +104,17 @@ nonTerminals = map SRule
 first :: Token s => Symbol s -> Set (ETok s)
 first = evalDone . first'
 
-first' :: Token s => Symbol s -> DoneA (RId s) (Set (ETok s))
+first' :: Token s => Symbol s -> Done (RId s) () (Set (ETok s))
 first' (STerm s)             = return $ S.singleton (ETok s)
-first' (SRule rid@(RId _ r)) = ifNotDone rid $ do
-    rec
-      putDone rid res
-      res <- S.unions <$> mapM firstProd' r
-    return res
+first' (SRule rid@(RId _ r)) = ifNotDoneG rid (const S.empty) $ do
+    putDone rid () -- res
+    S.unions <$> mapM firstProd' r
 
 -- | Get the first tokens of a production
 firstProd :: Token s => Prod s -> Set (ETok s)
 firstProd = evalDone . firstProd'
 
-firstProd' :: Token s => Prod s -> DoneA (RId s) (Set (ETok s))
+firstProd' :: Token s => Prod s -> Done (RId s) () (Set (ETok s))
 firstProd' []     = return $ S.singleton Epsilon
 firstProd' (x:xs) = do
     fx <- first' x

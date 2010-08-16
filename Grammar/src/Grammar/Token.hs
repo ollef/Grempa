@@ -40,7 +40,7 @@ data CTok a = CTok {unCTok :: a}
 instance Token a => Eq (CTok a) where
     CTok x == CTok y = ((==) `on` toConstr) x y
 
-instance (Show a, Data a, Ord a) => Ord (CTok a) where
+instance Token a => Ord (CTok a) where
     CTok x `compare` CTok y = case ((==) `on` toConstr) x y of
         True  -> EQ
         False -> x `compare` y

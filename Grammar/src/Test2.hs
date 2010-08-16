@@ -6,15 +6,15 @@ import Test.QuickCheck
 import Test
 import Parser.Static
 
-{-parseE :: String -> E
+parseE :: String -> E
 parseE = $(mkStaticParser e [|e|])
 
 parseList :: String -> String
 parseList = $(mkStaticParser list [|list|])
--}
+
 parseEx :: String -> S
 parseEx = $(mkStaticParser ex [|ex|])
-{-
+
 parseEx454 :: String -> Sx
 parseEx454 = $(mkStaticParser ex454 [|ex454|])
 
@@ -23,4 +23,4 @@ parseE1 = $(mkStaticParser e1 [|e1|])
 
 prop_e e = parseE (shower e) == e
 
--}
+

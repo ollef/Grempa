@@ -81,6 +81,7 @@ data Expr
     = ECase Expr [Branch]
     | ELet Branch Expr
     | EApp Expr Expr
+    | EVar String
   deriving (Show, Typeable)
 
 data Branch
@@ -112,7 +113,8 @@ lang = do
     expr <- paren $ rule
         [ECase <@  Case <#> expr <# Of <#> brs
         ,ELet  <@  Let  <#> br <# In <#> expr
-        ,EApp  <@> expr <#> expr]
+        ,EApp  <@> expr <#> expr
+        ,liftA EVar fromTok <@> var]
     br   <- rule [Branch <@> pat <# RightArrow <#> expr]
     brs' <- severalInter SemiColon $ rule [id <@> br]
     brs  <- rule [id <@ LCurl <#> brs' <# RCurl]
@@ -123,7 +125,8 @@ severalInter tok r = do
   rec
     x  <- r
     xs <- rule [epsilon []
-               ,(:) <@> x <# tok <#> xs]
+               ,(:[]) <@> x
+               ,(:)   <@> x <# tok <#> xs]
   return xs
 
 several :: (Typeable a, Typeable t) => GRId t a -> GRId t [a]
