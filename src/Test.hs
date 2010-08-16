@@ -39,14 +39,14 @@ instance Arbitrary E where
 e :: GRId Char E
 e = do
     rec
-      e  <- rule [(:+:) <@> e <# '+' <#> t
-                 ,id    <@> t
+      e  <- rule [ (:+:) <@> e <# '+' <#> t
+                 , id    <@> t
                  ]
-      t  <- rule [(:*:) <@> t <# '*' <#> f
-                 ,id    <@> f
+      t  <- rule [ (:*:) <@> t <# '*' <#> f
+                 , id    <@> f
                  ]
-      f  <- rule [id    <@ '(' <#> e <# ')'
-                 ,Var   <@ 'x'
+      f  <- rule [ id    <@ '(' <#> e <# ')'
+                 , Var   <@ 'x'
                  ]
     return e
 
@@ -69,14 +69,14 @@ data E1 = E1 :++: E1
 e1 :: GRId Sym E1
 e1 = do
     rec
-      e  <- rule [(:++:) <@> e <# Plus  <#> t
-                 ,id     <@> t
+      e  <- rule [ (:++:) <@> e <# Plus  <#> t
+                 , id     <@> t
                  ]
-      t  <- rule [(:**:) <@> t <# Times <#> f
-                 ,id     <@> f
+      t  <- rule [ (:**:) <@> t <# Times <#> f
+                 , id     <@> f
                  ]
-      f  <- rule [id     <@ LParen <#> e <# RParen
-                 ,idV    <@> Ident ""
+      f  <- rule [ id     <@ LParen <#> e <# RParen
+                 , idV    <@> Ident ""
                  ]
     return e
   where

@@ -53,7 +53,7 @@ putDone = modify `dot` M.insert
 evalDone :: Done k v a -> a
 evalDone = flip evalState M.empty
 
--- | Convert a map to an array
+-- | Convert a mapping to an array
 --   Uses minimum and maximum, which means that the Ix and Num instances
 --   must comply.
 class IxMinMax a where
