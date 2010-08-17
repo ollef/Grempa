@@ -36,11 +36,11 @@ instance ToPat a => ToPat [a] where
 
 toConstrPat :: (Token s, Lift s) => s -> PatQ
 toConstrPat x = do
-    let name = mkName $ show $ toConstr x
+    let name = mkName $ tyconModule (dataTypeName $ dataTypeOf x) ++ "." ++ show (toConstr x)
     info <-reify name
     case info of
         DataConI n t _ _ -> conP n $ replicate (numArgs t) wildP
-        _                -> undefined
+        x                -> error $ "toConstrPat got " ++ show x
 
 numArgs :: Type -> Int
 numArgs (AppT _ t2) = 1 + numArgs t2

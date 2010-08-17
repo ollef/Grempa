@@ -9,6 +9,8 @@ import Grammar.Typed
 
 import Fun
 
+--test x = $(mkStaticParser x [|x|])
+
 parse = $(mkStaticParser lang [|lang|])
 --parse = evalGrammar . runSLRC lang
 

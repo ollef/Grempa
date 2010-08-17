@@ -34,6 +34,9 @@ fromTok (Var s) = s
 fromTok (Con s) = s
 fromTok (Sym s) = s
 
+fromNum :: Tok -> Integer
+fromNum (Num n) = n
+
 $(deriveLift ''Tok)
 
 instance ToPat Tok where toPat = toConstrPat
@@ -83,6 +86,7 @@ data Expr
     | ELet Def Expr
     | EApp Expr Expr
     | EVar String
+    | ENum Integer
   deriving (Show, Typeable)
 
 data Branch
@@ -97,6 +101,7 @@ data Pat
 var = Var ""
 con = Con ""
 sym = Sym ""
+num = Num 0
 
 lang :: GRId Tok [Def]
 lang = do
@@ -120,7 +125,8 @@ lang = do
         [ECase <@  Case <#> expr <# Of <# LCurl <#> casebrs <# RCurl
         ,ELet  <@  Let  <#> def <# In <#> expr
         ,EApp  <@> expr <#> expr
-        ,liftA EVar fromTok <@> var
+        ,EVar . fromTok <@> var
+        ,ENum . fromNum <@> num
         ,paren expr]
     casebr  <- rule [Branch <@> pat <# RightArrow <#> expr]
     casebrs <- severalInter SemiColon casebr
