@@ -8,8 +8,8 @@ import Parser.Dynamic
 import Grammar.Typed
 
 import Fun
-
---test x = $(mkStaticParser x [|x|])
+-- We also need the token datatype in scope or Template Haskell will whine
+import Lex
 
 parse = $(mkStaticParser lang [|lang|])
 --parse = evalGrammar . runSLRC lang
