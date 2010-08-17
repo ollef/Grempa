@@ -14,8 +14,6 @@ import Parser.Table
 import Grammar.Token
 import qualified Grammar.Typed as T
 
-import Debug.Trace
-
 -- | The recursive data types for untyped grammars
 type Rule s = [Prod s]
 type Prod s = [Symbol s]

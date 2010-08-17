@@ -1,5 +1,5 @@
-{-# LANGUAGE TemplateHaskell, DeriveDataTypeable, DoRec #-}
-module Lex
+{-# LANGUAGE TypeFamilies, TemplateHaskell, DeriveDataTypeable, DoRec #-}
+module Fun
     (Tok(..), lexit, lang)
   where
 
@@ -12,6 +12,7 @@ import Language.Haskell.TH.Lift
 import Grammar.Typed
 import Parser.Static
 
+-- * Lexer for transforming a string into a list of tokens
 data Tok
     = Var String
     | Con String
@@ -71,7 +72,7 @@ isSym c   = isPunctuation c || isSymbol c
 go :: (String -> Tok) -> (Char -> Bool) -> String -> [Tok]
 go c p xs = let (v, rest) = span p xs in c v : lexit rest
 
--- Parser definition
+-- * Parser definition
 
 data Def
     = Def String [Pat] Expr
@@ -79,7 +80,7 @@ data Def
 
 data Expr
     = ECase Expr [Branch]
-    | ELet Branch Expr
+    | ELet Def Expr
     | EApp Expr Expr
     | EVar String
   deriving (Show, Typeable)
@@ -100,48 +101,55 @@ sym = Sym ""
 lang :: GRId Tok [Def]
 lang = do
   rec
-    defs  <- severalInter SemiColon $ rule
-        [liftA Def  fromTok <@>
+    def <- rule
+        [liftA Def fromTok <@>
             var <#> pats <# Equals <#> expr]
-    pat <- paren $ rule
+    defs <- severalInter SemiColon def
+    pat <- rule
         [liftA PCon fromTok <@>
             con <#> pats
-        ,liftA PVar fromTok <@>
-            var
+        ,id <@> apat
         ]
-    pats <- several $ rule [id <@> pat]
-    expr <- paren $ rule
-        [ECase <@  Case <#> expr <# Of <#> brs
-        ,ELet  <@  Let  <#> br <# In <#> expr
+    apat <- rule
+        [paren pat
+        ,flip PCon [] . fromTok <@> con
+        ,PVar . fromTok         <@> var
+        ]
+    pats <- several apat
+    expr <- rule
+        [ECase <@  Case <#> expr <# Of <# LCurl <#> casebrs <# RCurl
+        ,ELet  <@  Let  <#> def <# In <#> expr
         ,EApp  <@> expr <#> expr
-        ,liftA EVar fromTok <@> var]
-    br   <- rule [Branch <@> pat <# RightArrow <#> expr]
-    brs' <- severalInter SemiColon $ rule [id <@> br]
-    brs  <- rule [id <@ LCurl <#> brs' <# RCurl]
+        ,liftA EVar fromTok <@> var
+        ,paren expr]
+    casebr  <- rule [Branch <@> pat <# RightArrow <#> expr]
+    casebrs <- severalInter SemiColon casebr
   return defs
+  where
+    paren x = id <@ LParen <#> x <# RParen
 
-severalInter :: (Typeable a, Typeable t) => t -> GRId t a -> GRId t [a]
-severalInter tok r = do
+
+severalInterR :: (Typeable a, Typeable s)
+              => s -> Rule s a -> GRId s [ToSymT s (RId s a)]
+severalInterR tok r = rule r >>= severalInter tok
+
+severalInter :: (ToSym s x, ToSymT s x ~ a, Typeable a, Typeable s)
+             => s -> x -> GRId s [a]
+severalInter tok x = do
   rec
-    x  <- r
     xs <- rule [epsilon []
                ,(:[]) <@> x
                ,(:)   <@> x <# tok <#> xs]
   return xs
 
-several :: (Typeable a, Typeable t) => GRId t a -> GRId t [a]
-several r = do
+severalR :: (Typeable a, Typeable s)
+        => Rule s a -> GRId s [ToSymT s (RId s a)]
+severalR r = rule r >>= several
+
+several :: (ToSym s x, ToSymT s x ~ a, Typeable a, Typeable s)
+        => x -> GRId s [a]
+several x = do
   rec
-    x  <- r
     xs <- rule [epsilon []
                ,(:) <@> x <#> xs]
   return xs
-
-
-paren :: Typeable a => GRId Tok a -> GRId Tok a
-paren r = do
-  rec
-    x <- r
-    p <- rule [id <@ LParen <#> x <# RParen
-              ,id <@> x]
-  return p

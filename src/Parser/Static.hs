@@ -89,7 +89,7 @@ mkStaticParser :: (Typeable a, ToPat s, Token s, Lift s)
 mkStaticParser g gn = do
     drive  <- newName "driver"
     let driverf = funD drive
-                  [clause [] (normalB [| \inp -> ($res inp) |]) []]
+                  [clause [] (normalB [| $res |]) []]
     letE [driverf] [| thDriver $gn $(varE drive) |]
   where (res, _) = runSLRGTH g
 

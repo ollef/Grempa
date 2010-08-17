@@ -101,5 +101,5 @@ actions (items, i) = do
         True  -> Error $ M.keys $ shifts tab
         False -> head  $ M.elems (reds tab)
     mapShifts tab = M.map (\(Reduce r pr p _) -> Reduce r pr p $ M.keys $ shifts tab) tab
-    reds   tab = M.filter isReduce tab
-    shifts tab = M.filter (not . isReduce) tab
+    reds   = M.filter isReduce
+    shifts = M.filter (not . isReduce)

@@ -1,21 +1,10 @@
 större exempel
 errormeddelanden för konflikter
-rensa kod
-  få bort extensions om möjligt
-konstanttidtables?
-  - går det att göra detta med tokens? antagligen inte
+cabal
+rensa kod, få bort extensions om möjligt
 QuickCheck
-kolla kompat. med ByteString
-deriving read
-profiling - (Försöka få bort rev?)
 dokumentation
-v strukturera om i mappar
-v TH - tables som görs under compile time
-  v gör så att konstruktorkomp fungerar
-v LALR
-v bättre errormeddelanden
-  funkar inte helt för ex ("x=x=x")
-  v gör så att den ger tillbaka vilken position
-    gör så att den ger tillbaka en Either el. liknande med information om felet
-v Skönare syntax (med lite klasser)
-v markera produktioner som inte ska vara med som resultat (gör det snyggare?)
+errormeddelanden funkar inte helt för ex ("x=x=x")
+gör så att den ger tillbaka en Either el. liknande med information om felet och dess position
+graph använder senaste graphviz
+deriving read

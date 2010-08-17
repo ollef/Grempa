@@ -10,8 +10,6 @@ import Data.Maybe
 import Data.Set(Set)
 import qualified Data.Set as S
 
-import Debug.Trace
-
 import Aux
 import Parser.Item
 import MultiMap(MultiMap)
@@ -108,23 +106,21 @@ lookaheads istate i k x = do
       where js  = closure $ S.singleton $ fromSLR a (Tok Nothing)
 
 fromSLR :: SLR.Item s -> Tok s -> Item s
-fromSLR (SLR.Item r prod pos) la = Item r prod pos la
+fromSLR (SLR.Item r prod pos) = Item r prod pos
 
 fromLALR :: Item s -> SLR.Item s
 fromLALR (Item r prod pos _) = SLR.Item r prod pos
-
-tracer s x = trace (s ++ show x) x
 
 -- | Find the lookaheads of an SLR Item
 findLookaheads :: Token s
                => LookaheadTable s
                -> Int -> SLR.Item (Maybe s)
                -> Done (Int, SLR.Item (Maybe s)) () (Set (Tok (Maybe s)))
-findLookaheads latable istate i = trace "findLAs" $ do
+findLookaheads latable istate i =
     ifNotDoneG (istate, i) (const S.empty) $ do
-        let las = tracer "LALALA: " $ MM.lookup (istate, i) latable
+        let las = MM.lookup (istate, i) latable
         putDone (istate, i) ()
-        S.unions <$> mapM go (S.toList $ las)
+        S.unions <$> mapM go (S.toList las)
   where
     go (Spont s)        = return $ S.singleton s
     go (PropFrom st it) = findLookaheads latable st it
@@ -134,14 +130,14 @@ lalrItems :: Token s => Gen SLR.Item (Maybe s) [(Set (Item (Maybe s)), Int)]
 lalrItems = do
     st  <- asks gStartRule
     iss <- asks gItemSets
-    let kss  = tracer "KERNELS: " $ map (A.first $ kernel st) $ tracer "ITEMS: " iss
+    let kss  = map (A.first $ kernel st) iss
     syms <- asks gSymbols
     las <- zipWithM (\(i,n) (k,_) -> MM.unions <$> mapM (lookaheads n i k) syms) iss kss
-    let tab = tracer "TAB: " $ MM.unions las
-    return $ tracer "LALRITEMS: " $
+    let tab = MM.unions las
+    return
         [ let newi = [ evalDone $ toIts it <$> findLookaheads tab n it
                      | it <- S.toList ks]
-          in (closure $ tracer "LALRKERNEL: " $ S.fromList $ concat newi, n)
+          in (closure $ S.fromList $ concat newi, n)
         | (ks, n) <- kss]
   where
     toIts it   las = map (fromSLR it) $ remNothing las
@@ -158,9 +154,9 @@ lalr g =
     let initSlr    = gen (Just <$> g)
         initg      = slrGenToLalrGen initSlr
         cs         = gItemSets initg
-        as         = tracer "actions" $ [runGen (actions i) initg | i <- cs]
-        gs         = tracer "gotos" $ concat [runGen (gotos   i) initg | i <- cs]
-    in tracer "LALR: " $ (as, gs, gStartState initg)
+        as         =        [runGen (actions i) initg | i <- cs]
+        gs         = concat [runGen (gotos   i) initg | i <- cs]
+    in (as, gs, gStartState initg)
 
 -- | Create goto table
 gotos :: Token s
@@ -205,5 +201,5 @@ actions (items, i) = do
     mapShifts tab = M.map (addShifts $ M.keys $ shifts tab) tab
       where addShifts ss (Reduce r pr p _) = Reduce r pr p ss
             addShifts _  x                 = x
-    reds   tab = M.filter isReduce tab
-    shifts tab = M.filter (not . isReduce) tab
+    reds   = M.filter isReduce
+    shifts = M.filter (not . isReduce)

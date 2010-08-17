@@ -6,6 +6,7 @@ import "monads-fd" Control.Monad.Reader
 import Data.List
 import Data.Map(Map)
 import qualified Data.Map as M
+import Data.Maybe
 import Data.Set(Set)
 import qualified Data.Set as S
 
@@ -87,7 +88,7 @@ gen g = GenData is ix rs ts nt sys ss g
     ts  = terminals rs
     nt  = nonTerminals rs
     sys = ts ++ nt
-    ss  = snd $ maybe (error "initialGen: maybe") id
+    ss  = snd $ fromMaybe (error "initialGen: maybe")
               $ find (S.member (startItem g) . fst) is
 
 

@@ -16,7 +16,7 @@ import qualified Grammar.Typed as T
 import Grammar.Untyped
 
 actToFun :: Ord s => ActionTable s -> ActionFun s
-actToFun table st t = maybe def id $ M.lookup t stateTable
+actToFun table st t = fromMaybe def $ M.lookup t stateTable
   where
     a                 = listToArr table
     (stateTable, def) = a ! st

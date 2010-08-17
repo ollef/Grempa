@@ -69,7 +69,7 @@ rtToTyped unc funs (RTReduce r p tree) = applDynFun fun l
 
 driver :: Token s => (ActionFun s, GotoFun s, StateI) -> [s] -> ReductionTree s
 driver (actionf, gotof, start) input =
-    driver' [start] (map Tok input ++ [RightEnd]) [] [] 0
+    driver' [start] (map Tok input ++ [RightEnd]) [] [] (0 :: Integer)
   where
     driver' stack@(s:_) (a:rest) rt ests pos = --trace (show stack ++ "," ++ show (a:rest) ) $
       case actionf s a of
@@ -81,4 +81,4 @@ driver (actionf, gotof, start) input =
               rt' = RTReduce rule prod (reverse $ take len rt) : drop len rt
           Accept -> head rt
           Error es -> error $ "Parse error at " ++ show pos ++ ", expecting " ++ show (nub $ es ++ ests)
-    driver' _ _ _ _ pos = error $ "Oh snap! Parse error at " ++ show pos
+    driver' _ _ _ _ pos = error $ "Oh snap! Internal parser error at " ++ show pos
