@@ -1,5 +1,5 @@
 {-# LANGUAGE TupleSections, FlexibleInstances, MultiParamTypeClasses #-}
-module Text.Grempa.Parser.SLR where
+module Data.Parser.Grempa.Parser.SLR where
 import Control.Applicative
 import qualified Control.Arrow as A
 import Control.Monad.Reader
@@ -9,11 +9,11 @@ import Data.Set(Set)
 import qualified Data.Set as S
 import Data.Maybe
 
-import Text.Grempa.Aux
-import Text.Grempa.Parser.Item
-import Text.Grempa.Parser.Table
-import Text.Grempa.Grammar.Token
-import Text.Grempa.Grammar.Untyped
+import Data.Parser.Grempa.Aux.Aux
+import Data.Parser.Grempa.Parser.Item
+import Data.Parser.Grempa.Parser.Table
+import Data.Parser.Grempa.Grammar.Token
+import Data.Parser.Grempa.Grammar.Untyped
 
 data Item s =
      Item { itemRId  :: RId s

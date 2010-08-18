@@ -4,7 +4,7 @@ module Test2 where
 import Test.QuickCheck
 
 import Test
-import Text.Grempa.Parser.Static
+import Data.Parser.Grempa.Static
 
 parseE :: String -> E
 parseE = $(mkStaticParser e [|e|])

@@ -1,11 +1,11 @@
 {-# LANGUAGE GADTs, DoRec, DeriveDataTypeable, TypeFamilies, FlexibleInstances, MultiParamTypeClasses #-}
-module Text.Grempa.Grammar.Typed where
+module Data.Parser.Grempa.Grammar.Typed where
 
 import Control.Monad.State
 import Data.Data
 import Data.Dynamic
 
-import Text.Grempa.Parser.Table
+import Data.Parser.Grempa.Parser.Table
 
 type Rule s a = [Prod s a]
 

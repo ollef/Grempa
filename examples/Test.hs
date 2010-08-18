@@ -10,8 +10,8 @@ import Language.Haskell.TH.Lift
 
 import Test.QuickCheck
 
-import Text.Grempa.Parser.Static
-import Text.Grempa.Grammar.Typed
+import Data.Parser.Grempa.Static
+import Data.Parser.Grempa.Grammar
 
 ----------------------------- TEST GRAMMARS -----
 

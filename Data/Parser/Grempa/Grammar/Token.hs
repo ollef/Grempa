@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell, DeriveDataTypeable, UndecidableInstances, FlexibleInstances #-}
-module Text.Grempa.Grammar.Token where
+module Data.Parser.Grempa.Grammar.Token where
 
 import Data.Typeable
 import Data.Data

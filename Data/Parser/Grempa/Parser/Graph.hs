@@ -1,4 +1,4 @@
-module Text.Grempa.Parser.Graph where
+module Data.Parser.Grempa.Parser.Graph where
 
 import Control.Monad.State
 
@@ -9,8 +9,8 @@ import Data.Graph.Inductive.Tree
 import qualified Text.Grempa.Typed
 import qualified Text.Grempa.Test
 
-import Text.Grempa.Parser.Table
-import Text.Grempa.Parser.Dynamic
+import Data.Parser.Grempa.Parser.Table
+import Data.Parser.Grempa.Parser.Dynamic
 
 makeGraph :: Show s => [ReductionTree s] -> Gr (String, Color, Shape) Color
 makeGraph = uncurry mkGraph . flip evalState 0 . makeGraph' Nothing

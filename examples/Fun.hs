@@ -6,7 +6,7 @@ import Control.Applicative
 import Data.Data
 import Data.Typeable
 
-import Text.Grempa.Grammar.Typed
+import Data.Parser.Grempa.Grammar
 
 import Lex
 
