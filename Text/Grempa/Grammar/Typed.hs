@@ -1,11 +1,11 @@
-{-# LANGUAGE GADTs, DoRec, DeriveDataTypeable, PackageImports, TypeFamilies, FlexibleInstances, MultiParamTypeClasses #-}
-module Grammar.Typed where
+{-# LANGUAGE GADTs, DoRec, DeriveDataTypeable, TypeFamilies, FlexibleInstances, MultiParamTypeClasses #-}
+module Text.Grempa.Grammar.Typed where
 
-import "monads-fd" Control.Monad.State
+import Control.Monad.State
 import Data.Data
 import Data.Dynamic
 
-import Parser.Table
+import Text.Grempa.Parser.Table
 
 type Rule s a = [Prod s a]
 

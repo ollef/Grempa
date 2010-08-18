@@ -8,10 +8,10 @@ import Data.Typeable
 import Data.Data
 import Language.Haskell.TH.Lift
 
-import Parser.Static
-import Grammar.Typed
-
 import Test.QuickCheck
+
+import Text.Grempa.Parser.Static
+import Text.Grempa.Grammar.Typed
 
 ----------------------------- TEST GRAMMARS -----
 

@@ -1,17 +1,16 @@
-{-# LANGUAGE PackageImports #-}
-module Graph where
+module Text.Grempa.Parser.Graph where
 
-import "monads-fd" Control.Monad.State
+import Control.Monad.State
 
 import Data.GraphViz
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Tree
 
-import qualified Typed
-import qualified Test
+import qualified Text.Grempa.Typed
+import qualified Text.Grempa.Test
 
-import Table
-import DynamicParser
+import Text.Grempa.Parser.Table
+import Text.Grempa.Parser.Dynamic
 
 makeGraph :: Show s => [ReductionTree s] -> Gr (String, Color, Shape) Color
 makeGraph = uncurry mkGraph . flip evalState 0 . makeGraph' Nothing

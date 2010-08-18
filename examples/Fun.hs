@@ -6,7 +6,7 @@ import Control.Applicative
 import Data.Data
 import Data.Typeable
 
-import Grammar.Typed
+import Text.Grempa.Grammar.Typed
 
 import Lex
 
@@ -33,7 +33,7 @@ data Pat
     | PVar String
   deriving (Show, Typeable)
 
--- | Grammar of the language
+-- | Grammar for the language
 lang :: GRId Tok [Def]
 lang = do
   rec

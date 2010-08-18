@@ -1,5 +1,5 @@
 -- | A Map mapping multiple values to a key.
-module MultiMap
+module Text.Grempa.MultiMap
   ( MultiMap
   , lookup
   , insert

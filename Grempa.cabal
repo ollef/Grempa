@@ -1,0 +1,37 @@
+Name:                Grempa
+Version:             0.1.0
+Synopsis:            Embedded grammar DSL and LALR parser generator
+Description:
+    A library for expressing programming language grammars in a form similar
+    to BNF, which is extended with the semantic actions to take when
+    a production has been parsed. The grammars are typed and are to be be used
+    with the LALR parser generator, also part of the library, which can
+    generate a parser for the language either at compile time using Template
+    Haskell, producing fast parsers with no initial overhead, or dynamically,
+    which has the initial overhead of generating the parser, but can be used
+    for example when the grammar depends on an input.
+License:             BSD3
+License-file:        LICENSE
+Author:              Olle Fredriksson
+Maintainer:          fredriksson.olle@gmail.com
+Category:            Text
+Build-type:          Simple
+Extra-source-files:  README, examples/*.hs examples/Test.fs
+Cabal-version:       >=1.2
+Library
+    Build-depends:   array            == 0.3.*
+                   , base             == 4.2.*
+                   , containers       == 0.3.*
+                   , monads-fd        == 0.1.*
+                   , template-haskell == 2.4.*
+                   , th-lift          == 0.5.*
+    Exposed-modules: Text.Grempa.Grammar
+                   , Text.Grempa.Parser.Static
+                   , Text.Grempa.Parser.Dynamic
+                   --, Text.Grempa.Parser.Graph
+    Other-modules:   Text.Grempa.Aux
+                   , Text.Grempa.MultiMap
+                   , Text.Grempa.Parser.Item
+                   , Text.Grempa.Parser.LALR
+                   , Text.Grempa.Parser.SLR
+                   , Text.Grempa.Parser.Table

@@ -1,19 +1,19 @@
-{-# LANGUAGE TupleSections, PackageImports, FlexibleInstances, MultiParamTypeClasses #-}
-module Parser.SLR where
+{-# LANGUAGE TupleSections, FlexibleInstances, MultiParamTypeClasses #-}
+module Text.Grempa.Parser.SLR where
 import Control.Applicative
 import qualified Control.Arrow as A
-import "monads-fd" Control.Monad.Reader
+import Control.Monad.Reader
 import Data.Map(Map)
 import qualified Data.Map as M
 import Data.Set(Set)
 import qualified Data.Set as S
 import Data.Maybe
 
-import Aux
-import Parser.Item
-import Parser.Table
-import Grammar.Token
-import Grammar.Untyped
+import Text.Grempa.Aux
+import Text.Grempa.Parser.Item
+import Text.Grempa.Parser.Table
+import Text.Grempa.Grammar.Token
+import Text.Grempa.Grammar.Untyped
 
 data Item s =
      Item { itemRId  :: RId s

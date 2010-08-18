@@ -1,4 +1,5 @@
-större exempel
+hitta på namn
+  emparse, embedded grammar and parser generator egaparsergen
 errormeddelanden för konflikter
 cabal
 rensa kod, få bort extensions om möjligt

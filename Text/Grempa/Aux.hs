@@ -1,6 +1,5 @@
-{-# LANGUAGE PackageImports #-}
-module Aux where
-import "monads-fd" Control.Monad.State
+module Text.Grempa.Aux where
+import Control.Monad.State
 import Data.Array
 import Data.Map(Map)
 import qualified Data.Map as M

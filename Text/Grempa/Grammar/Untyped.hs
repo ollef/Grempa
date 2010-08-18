@@ -1,18 +1,18 @@
-{-# LANGUAGE GADTs, DoRec, PackageImports #-}
-module Grammar.Untyped where
+{-# LANGUAGE GADTs, DoRec #-}
+module Text.Grempa.Grammar.Untyped where
 
 import Control.Arrow
 import Control.Applicative
-import "monads-fd" Control.Monad.State
+import Control.Monad.State
 import qualified Data.Map as M
 import Data.Map(Map)
 import Data.Set(Set)
 import qualified Data.Set as S
 
-import Aux
-import Parser.Table
-import Grammar.Token
-import qualified Grammar.Typed as T
+import Text.Grempa.Aux
+import Text.Grempa.Parser.Table
+import Text.Grempa.Grammar.Token
+import qualified Text.Grempa.Grammar.Typed as T
 
 -- | The recursive data types for untyped grammars
 type Rule s = [Prod s]

@@ -3,9 +3,9 @@ module Main where
 
 import System.Environment
 
-import Parser.Static
-import Parser.Dynamic
-import Grammar.Typed
+import Text.Grempa.Parser.Static
+import Text.Grempa.Parser.Dynamic
+import Text.Grempa.Grammar.Typed
 
 import Fun
 -- We also need the token datatype in scope or Template Haskell will whine

@@ -5,7 +5,7 @@ import Data.Char
 import Data.Data
 import Data.Typeable
 import Language.Haskell.TH.Lift
-import Parser.Static
+import Text.Grempa.Parser.Static
 
 -- * Lexer for transforming a string into a list of tokens
 data Tok

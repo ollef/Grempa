@@ -1,8 +1,8 @@
-{-# LANGUAGE MultiParamTypeClasses, PackageImports #-}
-module Parser.Item where
+{-# LANGUAGE MultiParamTypeClasses #-}
+module Text.Grempa.Parser.Item where
 
 import Control.Applicative
-import "monads-fd" Control.Monad.Reader
+import Control.Monad.Reader
 import Data.List
 import Data.Map(Map)
 import qualified Data.Map as M
@@ -10,10 +10,10 @@ import Data.Maybe
 import Data.Set(Set)
 import qualified Data.Set as S
 
-import Aux
-import Grammar.Untyped
-import Parser.Table
-import Grammar.Token
+import Text.Grempa.Aux
+import Text.Grempa.Grammar.Untyped
+import Text.Grempa.Parser.Table
+import Text.Grempa.Grammar.Token
 
 class (Eq (i s), Ord (i s), Show (i s), Token s) => It i s where
     itRId     :: i s -> RId s
