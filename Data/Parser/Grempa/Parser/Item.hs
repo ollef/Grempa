@@ -1,5 +1,5 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
-module Text.Grempa.Parser.Item where
+module Data.Parser.Grempa.Parser.Item where
 
 import Control.Applicative
 import Control.Monad.Reader
@@ -10,10 +10,10 @@ import Data.Maybe
 import Data.Set(Set)
 import qualified Data.Set as S
 
-import Text.Grempa.Aux
-import Text.Grempa.Grammar.Untyped
-import Text.Grempa.Parser.Table
-import Text.Grempa.Grammar.Token
+import Data.Parser.Grempa.Aux.Aux
+import Data.Parser.Grempa.Grammar.Untyped
+import Data.Parser.Grempa.Parser.Table
+import Data.Parser.Grempa.Grammar.Token
 
 class (Eq (i s), Ord (i s), Show (i s), Token s) => It i s where
     itRId     :: i s -> RId s

@@ -25,13 +25,13 @@ Library
                    , monads-fd        == 0.1.*
                    , template-haskell == 2.4.*
                    , th-lift          == 0.5.*
-    Exposed-modules: Text.Grempa.Grammar
-                   , Text.Grempa.Parser.Static
-                   , Text.Grempa.Parser.Dynamic
+    Exposed-modules: Data.Parser.Grempa.Grammar
+                   , Data.Parser.Grempa.Static
+                   , Data.Parser.Grempa.Dynamic
                    --, Text.Grempa.Parser.Graph
-    Other-modules:   Text.Grempa.Aux
-                   , Text.Grempa.MultiMap
-                   , Text.Grempa.Parser.Item
-                   , Text.Grempa.Parser.LALR
-                   , Text.Grempa.Parser.SLR
-                   , Text.Grempa.Parser.Table
+    Other-modules:   Data.Parser.Grempa.Aux.Aux
+                   , Data.Parser.Grempa.Aux.MultiMap
+                   , Data.Parser.Grempa.Parser.Item
+                   , Data.Parser.Grempa.Parser.LALR
+                   , Data.Parser.Grempa.Parser.SLR
+                   , Data.Parser.Grempa.Parser.Table

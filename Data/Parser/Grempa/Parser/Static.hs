@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Text.Grempa.Parser.Static where
+module Data.Parser.Grempa.Parser.Static where
 
 import Control.Applicative
 import Data.Dynamic
@@ -9,11 +9,11 @@ import Data.Data
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
-import Text.Grempa.Parser.LALR
-import Text.Grempa.Parser.Table
-import qualified Text.Grempa.Grammar.Typed as T
-import Text.Grempa.Grammar.Token
-import Text.Grempa.Grammar.Untyped
+import Data.Parser.Grempa.Parser.LALR
+import Data.Parser.Grempa.Parser.Table
+import qualified Data.Parser.Grempa.Grammar.Typed as T
+import Data.Parser.Grempa.Grammar.Token
+import Data.Parser.Grempa.Grammar.Untyped
 
 class ToPat a where
     toPat :: a -> PatQ

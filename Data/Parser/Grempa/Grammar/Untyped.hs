@@ -1,5 +1,5 @@
 {-# LANGUAGE GADTs, DoRec #-}
-module Text.Grempa.Grammar.Untyped where
+module Data.Parser.Grempa.Grammar.Untyped where
 
 import Control.Arrow
 import Control.Applicative
@@ -9,10 +9,10 @@ import Data.Map(Map)
 import Data.Set(Set)
 import qualified Data.Set as S
 
-import Text.Grempa.Aux
-import Text.Grempa.Parser.Table
-import Text.Grempa.Grammar.Token
-import qualified Text.Grempa.Grammar.Typed as T
+import Data.Parser.Grempa.Aux.Aux
+import Data.Parser.Grempa.Parser.Table
+import Data.Parser.Grempa.Grammar.Token
+import qualified Data.Parser.Grempa.Grammar.Typed as T
 
 -- | The recursive data types for untyped grammars
 type Rule s = [Prod s]

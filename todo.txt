@@ -1,11 +1,8 @@
-hitta på namn
-  emparse, embedded grammar and parser generator egaparsergen
 errormeddelanden för konflikter
-cabal
 rensa kod, få bort extensions om möjligt
 QuickCheck
 dokumentation
 errormeddelanden funkar inte helt för ex ("x=x=x")
 gör så att den ger tillbaka en Either el. liknande med information om felet och dess position
-graph använder senaste graphviz
+graph använder senaste graphviz? eller ta bort kanske
 deriving read

@@ -1,5 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Text.Grempa.Parser.Table where
+module Data.Parser.Grempa.Parser.Table where
 
 import Data.Array
 import Data.Dynamic
@@ -7,8 +7,8 @@ import Data.List
 import Data.Map(Map)
 import Language.Haskell.TH.Lift
 
-import Text.Grempa.Aux
-import Text.Grempa.Grammar.Token
+import Data.Parser.Grempa.Aux.Aux
+import Data.Parser.Grempa.Grammar.Token
 
 type StateI = Int
 type RuleI  = Int

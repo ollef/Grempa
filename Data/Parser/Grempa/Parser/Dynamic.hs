@@ -1,4 +1,4 @@
-module Text.Grempa.Parser.Dynamic where
+module Data.Parser.Grempa.Parser.Dynamic where
 
 import Data.Array
 import Data.Data
@@ -7,13 +7,13 @@ import Data.Map(Map)
 import qualified Data.Map as M
 import Data.Maybe
 
-import Text.Grempa.Aux
-import Text.Grempa.Parser.SLR
-import Text.Grempa.Parser.LALR
-import Text.Grempa.Parser.Table
-import Text.Grempa.Grammar.Token
-import qualified Text.Grempa.Grammar.Typed as T
-import Text.Grempa.Grammar.Untyped
+import Data.Parser.Grempa.Aux.Aux
+import Data.Parser.Grempa.Parser.SLR
+import Data.Parser.Grempa.Parser.LALR
+import Data.Parser.Grempa.Parser.Table
+import Data.Parser.Grempa.Grammar.Token
+import qualified Data.Parser.Grempa.Grammar.Typed as T
+import Data.Parser.Grempa.Grammar.Untyped
 
 actToFun :: Ord s => ActionTable s -> ActionFun s
 actToFun table st t = fromMaybe def $ M.lookup t stateTable

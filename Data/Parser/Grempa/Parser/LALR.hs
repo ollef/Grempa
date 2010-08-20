@@ -1,5 +1,5 @@
 {-# LANGUAGE TupleSections, DoRec, FlexibleInstances, MultiParamTypeClasses #-}
-module Text.Grempa.Parser.LALR where
+module Data.Parser.Grempa.Parser.LALR where
 
 import Control.Applicative
 import qualified Control.Arrow as A
@@ -10,14 +10,14 @@ import Data.Maybe
 import Data.Set(Set)
 import qualified Data.Set as S
 
-import Text.Grempa.Aux
-import Text.Grempa.Parser.Item
-import Text.Grempa.MultiMap(MultiMap)
-import qualified Text.Grempa.MultiMap as MM
-import qualified Text.Grempa.Parser.SLR as SLR
-import Text.Grempa.Parser.Table
-import Text.Grempa.Grammar.Token
-import Text.Grempa.Grammar.Untyped
+import Data.Parser.Grempa.Aux.Aux
+import Data.Parser.Grempa.Parser.Item
+import Data.Parser.Grempa.Aux.MultiMap(MultiMap)
+import qualified Data.Parser.Grempa.Aux.MultiMap as MM
+import qualified Data.Parser.Grempa.Parser.SLR as SLR
+import Data.Parser.Grempa.Parser.Table
+import Data.Parser.Grempa.Grammar.Token
+import Data.Parser.Grempa.Grammar.Untyped
 
 data Item s =
      Item { itemRId  :: RId s

@@ -1,4 +1,4 @@
-module Text.Grempa.Aux where
+module Data.Parser.Grempa.Aux.Aux where
 import Control.Monad.State
 import Data.Array
 import Data.Map(Map)
