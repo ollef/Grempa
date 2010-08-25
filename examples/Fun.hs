@@ -1,10 +1,9 @@
 {-# LANGUAGE TypeFamilies, DeriveDataTypeable, DoRec #-}
-module Fun (lang)
+module Fun (lang, Def)
   where
 
 import Control.Applicative
 import Data.Data
-import Data.Typeable
 
 import Data.Parser.Grempa.Grammar
 
@@ -38,12 +37,12 @@ lang :: GRId Tok [Def]
 lang = do
   rec
     def <- rule
-        [liftA Def fromTok
+        [Def <$> fromTok
             <@> var <#> pats <# Equals <#> expr]
     defs <- severalInter SemiColon def
 
     pat <- rule
-        [liftA PCon fromTok
+        [PCon <$> fromTok
             <@> con <#> pats
         ,id <@> apat
         ]
@@ -63,7 +62,7 @@ lang = do
         -- All binary operators are parsed as being left-associative
         -- A post-processor could be used to change this when fixities
         -- and precedence levels of all operators are are known
-        [(\x o y -> EOp x (fromTok o) y)
+        [flip (flip EOp . fromTok)
                <@> expr1 <#> op <#> expr2
         ,id    <@> expr2
         ]
@@ -108,4 +107,3 @@ severalInter tok x = do
                ,(:[]) <@> x
                ,(:)   <@> x <# tok <#> xs]
   return xs
-

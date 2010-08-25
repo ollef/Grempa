@@ -31,6 +31,7 @@ Library
                    --, Text.Grempa.Parser.Graph
     Other-modules:   Data.Parser.Grempa.Aux.Aux
                    , Data.Parser.Grempa.Aux.MultiMap
+                   , Data.Parser.Grempa.Parser.Error
                    , Data.Parser.Grempa.Parser.Item
                    , Data.Parser.Grempa.Parser.LALR
                    , Data.Parser.Grempa.Parser.SLR

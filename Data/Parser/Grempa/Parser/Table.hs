@@ -3,7 +3,6 @@ module Data.Parser.Grempa.Parser.Table where
 
 import Data.Array
 import Data.Dynamic
-import Data.List
 import Data.Map(Map)
 import Language.Haskell.TH.Lift
 
@@ -46,12 +45,6 @@ prodFunToFun :: ProdFunTable -> ProdFunFun
 prodFunToFun table r p = a ! (r, p)
   where a = listToArr table
 
--- | Data type for reduction trees output by the driver
-data ReductionTree s
-    = RTReduce RuleI ProdI [ReductionTree s]
-    | RTTerm s
-  deriving Show
-
 data DynFun = DynFun Dynamic [Bool]
 
 applDynFun :: DynFun -> [Dynamic] -> Dynamic
@@ -60,25 +53,3 @@ applDynFun (DynFun f (b:bs)) (a:as)
     | otherwise = applDynFun (DynFun f bs) as
 applDynFun (DynFun f _) _ = f
 
-rtToTyped :: Token s => (s' -> s) -> ProdFunFun -> ReductionTree s' -> Dynamic
-rtToTyped unc _    (RTTerm s)   = toDyn (unc s)
-rtToTyped unc funs (RTReduce r p tree) = applDynFun fun l
-  where
-    l           = map (rtToTyped unc funs) tree
-    fun         = funs r p
-
-driver :: Token s => (ActionFun s, GotoFun s, StateI) -> [s] -> ReductionTree s
-driver (actionf, gotof, start) input =
-    driver' [start] (map Tok input ++ [RightEnd]) [] [] (0 :: Integer)
-  where
-    driver' stack@(s:_) (a:rest) rt ests pos = --trace (show stack ++ "," ++ show (a:rest) ) $
-      case actionf s a of
-          Shift t -> driver' (t : stack) rest (RTTerm (unTok a) : rt) [] (pos + 1)
-          Reduce rule prod len es -> driver' (got : stack') (a : rest) rt' (es ++ ests) pos
-            where
-              stack'@(t:_) = drop len stack
-              got          = gotof t rule
-              rt' = RTReduce rule prod (reverse $ take len rt) : drop len rt
-          Accept -> head rt
-          Error es -> error $ "Parse error at " ++ show pos ++ ", expecting " ++ show (nub $ es ++ ests)
-    driver' _ _ _ _ pos = error $ "Oh snap! Internal parser error at " ++ show pos

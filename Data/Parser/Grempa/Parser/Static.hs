@@ -3,13 +3,14 @@ module Data.Parser.Grempa.Parser.Static where
 
 import Control.Applicative
 import Data.Dynamic
-import Data.Maybe
 import qualified Data.Map as M
 import Data.Data
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
+import Data.Parser.Grempa.Parser.Driver
 import Data.Parser.Grempa.Parser.LALR
+import Data.Parser.Grempa.Parser.Driver
 import Data.Parser.Grempa.Parser.Table
 import qualified Data.Parser.Grempa.Grammar.Typed as T
 import Data.Parser.Grempa.Grammar.Token
@@ -35,8 +36,8 @@ instance ToPat a => ToPat [a] where
     toPat = listP . map toPat
 
 toConstrPat :: (Token s, Lift s) => s -> PatQ
-toConstrPat x = do
-    let name = mkName $ tyconModule (dataTypeName $ dataTypeOf x) ++ "." ++ show (toConstr x)
+toConstrPat t = do
+    let name = mkName $ tyconModule (dataTypeName $ dataTypeOf t) ++ "." ++ show (toConstr t)
     info <-reify name
     case info of
         DataConI n t _ _ -> conP n $ replicate (numArgs t) wildP
@@ -75,25 +76,22 @@ mkGotoFun tab = do
     mkMatch (k, v) =
         match (toPat k) (normalB [|v|]) []
 
-runSLRGTH :: (Typeable a, ToPat s, Token s, Lift s)
-          => T.GRId s a -> (ExpQ, ProdFunTable)
-runSLRGTH g = T.evalGrammar $ do
+staticRT :: (Typeable a, ToPat s, Token s, Lift s)
+          => T.GRId s a -> ExpQ
+staticRT g = T.evalGrammar $ do
     g' <- T.augment g
-    let (unt, funs) = unType id g'
+    let (unt, _)    = unType id g'
         (at,gt,st)  = lalr unt
         res         = [|driver ($(mkActFun at), $(mkGotoFun gt), st)|]
-    return (res, funs)
+    return res
 
 mkStaticParser :: (Typeable a, ToPat s, Token s, Lift s)
                => T.GRId s a -> ExpQ -> ExpQ
 mkStaticParser g gn = do
     drive  <- newName "driver"
+    inp    <- newName "inp"
     let driverf = funD drive
-                  [clause [] (normalB [| $res |]) []]
-    letE [driverf] [| thDriver $gn $(varE drive) |]
-  where (res, _) = runSLRGTH g
-
-thDriver :: (Token s, Typeable a) => T.GRId s a -> ([s] -> ReductionTree s) -> [s] -> a
-thDriver g f inp = fromJust $ fromDynamic $ rtToTyped id (prodFunToFun funs) (f inp)
+                  [clause [varP inp] (normalB [| $(staticRT g) $(varE inp) |]) []]
+    letE [driverf] [| resultDriver id $funs $gn . $(varE drive) |]
   where
-    funs = T.evalGrammar (snd <$> unType id <$> T.augment g)
+    funs = [| T.evalGrammar $ snd <$> unType id <$> T.augment $gn |]

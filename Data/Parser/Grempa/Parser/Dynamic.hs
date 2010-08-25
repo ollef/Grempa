@@ -1,14 +1,18 @@
-module Data.Parser.Grempa.Parser.Dynamic where
+module Data.Parser.Grempa.Parser.Dynamic
+    ( mkDynamicParser
+    , constrWrapper
+    , idWrapper
+    ) where
 
 import Data.Array
 import Data.Data
-import Data.Dynamic
 import Data.Map(Map)
 import qualified Data.Map as M
 import Data.Maybe
 
 import Data.Parser.Grempa.Aux.Aux
-import Data.Parser.Grempa.Parser.SLR
+import Data.Parser.Grempa.Parser.Driver
+import Data.Parser.Grempa.Parser.Error
 import Data.Parser.Grempa.Parser.LALR
 import Data.Parser.Grempa.Parser.Table
 import Data.Parser.Grempa.Grammar.Token
@@ -26,23 +30,23 @@ gotoToFun table st rule = a ! (st, rule)
   where
     a      = listToArr table
 
-runSLRG :: (Token s', Token s, Typeable a) => (s -> s')
-        -> T.GRId s a -> [s] -> T.Grammar s (ReductionTree s', ProdFunTable)
-runSLRG c g inp = do
+dynamicRT :: (Token s', Token s, Typeable a) => (s -> s')
+        -> T.GRId s a -> [s]
+        -> T.Grammar s (ParseResult s' (ReductionTree s'), ProdFunTable)
+dynamicRT c g inp = do
     g' <- T.augment g
     let (unt, funs) = unType c g'
         (at,gt,st)  = lalr unt
         res         = driver (actToFun at, gotoToFun gt, st) $ map c inp
     return (res, funs)
 
-runSLRGRes :: (Token s, Token s', Typeable a)
-       => (s -> s') -> (s' -> s) -> T.GRId s a -> [s] -> T.Grammar s a
-runSLRGRes c unc g inp = do
-    (res, funs) <- runSLRG c g inp
-    return $ fromJust $ fromDynamic $ rtToTyped unc (prodFunToFun funs) res
+mkDynamicParser :: (Token s, Token s', Typeable a)
+       => (s -> s', s' -> s) -> T.GRId s a -> Parser s a
+mkDynamicParser (c, unc) g inp =
+    let (res, funs) = T.evalGrammar $ dynamicRT c g inp
+     in resultDriver unc funs g res
 
-runSLR  :: (Token s, Typeable a) => T.GRId s a -> [s] -> T.Grammar s a
-runSLR  = runSLRGRes id id
-
-runSLRC :: (Token s, Typeable a) => T.GRId s a -> [s] -> T.Grammar s a
-runSLRC = runSLRGRes CTok unCTok
+constrWrapper :: (s -> CTok s, CTok s -> s)
+constrWrapper = (CTok, unCTok)
+idWrapper     :: (s -> s, s -> s)
+idWrapper     = (id,   id)

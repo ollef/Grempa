@@ -91,25 +91,25 @@ instance ToSym s (Symbol s a) where
 
 -- * Combinator functions
 -- | Sequence where the result of the symbol to the right matters
-infixl 6 <#>
+infixl 3 <#>
 (<#>) :: (ToSym s x, ToSymT s x ~ b)
       => Prod s (b -> a) -> x -> Prod s a
 p <#> q = PSeq (toSym q) p
 
 -- | Sequence where the result of the symbol to the right does not matter
-infixl 6 <#
+infixl 3 <#
 (<#) :: (ToSym s x)
      => Prod s a -> x -> Prod s a
 p <# q = PSeqN (toSym q) p
 
 -- | Start grammar where the result of the symbol to the right matters
-infixl 6 <@>
+infixl 3 <@>
 (<@>) :: (ToSym s x, ToSymT s x ~ b, Typeable a, Typeable b)
       => (b -> a) -> x -> Prod s a
 f <@> p = PSeq (toSym p) $ PEnd f
 
 -- | Start grammar where the result of the symbol to the right does not matter
-infixl 6 <@
+infixl 3 <@
 (<@) :: (ToSym s x, Typeable a)
      => a -> x -> Prod s a
 f <@ p = PSeqN (toSym p) $ PEnd f

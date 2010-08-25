@@ -14,6 +14,10 @@ unTok :: Tok s -> s
 unTok (Tok s) = s
 unTok _       = error "unTok"
 
+tokToString :: Show s => Tok s -> String
+tokToString (Tok s)  = show s
+tokToString RightEnd = "EOF"
+
 $(deriveLift ''Tok)
 
 -- Data type for token or epsilon
