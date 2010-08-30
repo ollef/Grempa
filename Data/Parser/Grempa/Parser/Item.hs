@@ -37,7 +37,7 @@ kernel st = S.filter $ isKernelIt st
 nextSymbol :: It i s => i s -> Tok (Symbol s)
 nextSymbol i
     | pos < length prod = Tok $ prod !! pos
-    | otherwise         = RightEnd
+    | otherwise         = EOF
   where prod = getItProd i
         pos  = getItPos i
 
@@ -52,7 +52,6 @@ goto is s = closure $ setFromJust $ S.map (nextTest s) is
 nextItPos :: It i s => i s -> i s
 nextItPos i = setItPos i $ getItPos i + 1
 
--- TODO: Make these functions use Gen in some way?
 -- | The sets of items for a grammar
 itemSets :: (It i s, Token s) => RId s -> [RId s] -> Set (Set (i s))
 itemSets rid rids = S.delete S.empty $ recTraverseG itemSets' c1
@@ -71,8 +70,6 @@ data GenData i s = GenData
   , gSymbols      :: [Symbol s]
   , gStartState   :: Int
   , gStartRule    :: RId s
-  -- TODO: Add this here too?
-  -- , gotos      :: Map (Set (i s), Symbol s) (Set (i s))
   } deriving Show
 
 type Gen i s = Reader (GenData i s)
@@ -88,7 +85,7 @@ gen g = GenData is ix rs ts nt sys ss g
     ts  = terminals rs
     nt  = nonTerminals rs
     sys = ts ++ nt
-    ss  = snd $ fromMaybe (error "initialGen: maybe")
+    ss  = snd $ fromMaybe (error "gen: maybe")
               $ find (S.member (startItem g) . fst) is
 
 

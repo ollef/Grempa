@@ -32,11 +32,11 @@ instance Eq (RId s) where
 instance Ord (RId s) where
     RId i _ `compare` RId j _ = i `compare` j
 
+type UnTypeState s' = State (Map Int (RId s'), ProdFunTable)
 -- | Returns an untyped tree representation of a typed grammar
 --   together with a mapping from rule and production number to
 --   a dynamic containing the construction function of the typed
 --   production
-type UnTypeState s' = State (Map Int (RId s'), ProdFunTable)
 unType :: (s -> s') -> T.RId s a -> (RId s', ProdFunTable)
 unType cs = second snd . flip runState (M.empty, []) . unTypeR cs
   where
@@ -50,13 +50,13 @@ unType cs = second snd . flip runState (M.empty, []) . unTypeR cs
                                   (map T.getFun r)
                 rec
                   put (M.insert i res rids, funs ++ newfuns)
-                  res <- RId i <$> mapM ((reverse <$>) . unTypeP c) r
+                  res <- RId i <$> mapM (unTypeP c) r
                 return res
     unTypeP :: (s -> s') -> T.Prod s a -> UnTypeState s' (Prod s')
     unTypeP c p = case p of
-        T.PSeq  s ps -> liftM2 (:) (unTypeS c s) (unTypeP c ps)
-        T.PSeqN s ps -> liftM2 (:) (unTypeS c s) (unTypeP c ps)
-        T.PEnd _    -> return []
+        T.PSeq  ps s -> liftM2 (++) (unTypeP c ps) ((:[]) <$> unTypeS c s)
+        T.PSeqN ps s -> liftM2 (++) (unTypeP c ps) ((:[]) <$> unTypeS c s)
+        T.PFun _    -> return []
     unTypeS :: (s -> s') -> T.Symbol s a -> UnTypeState s' (Symbol s')
     unTypeS c s = case s of
         T.STerm t -> return $ STerm (c t)
@@ -128,7 +128,7 @@ follow rid = evalDone `dot` follow' rid
 follow' :: Token s => RId s -> RId s -> [RId s] -> Done (RId s) () (Set (Tok s))
 follow' rid startrid rids = ifNotDoneG rid (const S.empty) $ do
     putDone rid ()
-    (if rid == startrid then S.insert RightEnd else id)
+    (if rid == startrid then S.insert EOF else id)
         <$> S.unions
         <$> sequence [followProd prod a
                          | a@(RId _ prods) <- rids

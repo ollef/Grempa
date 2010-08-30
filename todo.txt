@@ -3,5 +3,5 @@ rensa kod, få bort extensions om möjligt
 QuickCheck
 dokumentation
 errormeddelanden funkar inte helt för ex ("x=x=x")
-graph använder senaste graphviz? eller ta bort kanske
+--graph använder senaste graphviz? eller ta bort kanske
 deriving read

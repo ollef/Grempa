@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, DeriveDataTypeable, DoRec #-}
+{-# LANGUAGE DeriveDataTypeable, DoRec #-}
 module Fun (lang, Def)
   where
 
@@ -33,7 +33,7 @@ data Pat
   deriving (Show, Typeable)
 
 -- | Grammar for the language
-lang :: GRId Tok [Def]
+lang :: Grammar Tok [Def]
 lang = do
   rec
     def <- rule
@@ -85,25 +85,3 @@ lang = do
     paren x = id <@ LParen <#> x <# RParen
 
 
--- * Helper functions
-
--- | Create a new rule which consists of any number of the argument rule
---   example: @several rule@ matches @rule rule ... rule@
-several :: (ToSym s x, ToSymT s x ~ a, Typeable a, Typeable s)
-        => x -> GRId s [a]
-several x = do
-  rec
-    xs <- rule [epsilon []
-               ,(:) <@> x <#> xs]
-  return xs
-
--- | Create a new rule which consists of a list interspersed with a token,
---   example: @severalInter ';' rule@ matches @rule ';' rule ';' ... ';' rule@
-severalInter :: (ToSym s x, ToSymT s x ~ a, Typeable a, Typeable s)
-             => s -> x -> GRId s [a]
-severalInter tok x = do
-  rec
-    xs <- rule [epsilon []
-               ,(:[]) <@> x
-               ,(:)   <@> x <# tok <#> xs]
-  return xs

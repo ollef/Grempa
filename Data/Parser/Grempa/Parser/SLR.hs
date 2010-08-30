@@ -86,12 +86,12 @@ actions (items, i) = do
                 case j of
                     Just x  -> return [(Tok s, Shift x)]
                     Nothing -> return []
-            RightEnd
+            EOF
                 | rid /= start -> do
                     let as = S.toList $ follow rid start rs
                     return [(a, Reduce ri (itProd item) (length $ getItProd item) [])
                            | a <- as]
-                | otherwise     -> return [(RightEnd, Accept)]
+                | otherwise     -> return [(EOF, Accept)]
             _ -> return []
     tab <- M.unions <$> sequence
         [M.fromList <$> actions' it | it <- S.toList items]

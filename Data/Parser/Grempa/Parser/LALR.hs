@@ -40,7 +40,7 @@ instance Token s => It Item s where
     getItPos      = itemPos
     setItPos i p  = i {itemPos = p}
     closure       = closureLR1
-    startItem rid = Item rid 0 0 RightEnd
+    startItem rid = Item rid 0 0 EOF
 
 
 -- | Determine what items may be valid productions from an item
@@ -92,7 +92,7 @@ lookaheads istate i k x = do
             startSt  <- asks gStartState
             startRId <- asks gStartRule
             let startIt = startItem startRId
-            return $ MM.insert (startSt, startIt) (Spont RightEnd)
+            return $ MM.insert (startSt, startIt) (Spont EOF)
                    $ MM.unions
                    $ map (MM.fromList . lookaheadsI jstate)
                    $ S.toList k
@@ -183,13 +183,13 @@ actions (items, i) = do
                 case j of
                     Just x  -> return [(Tok s, Shift x)]
                     Nothing -> return []
-            RightEnd
+            EOF
                 | rid /= start ->
                     return
                         [ ( fromJust <$> itemLA item
                           , Reduce ri (itProd item)
                                       (length $ getItProd item) [])]
-                | itemLA item == RightEnd -> return [(RightEnd, Accept)]
+                | itemLA item == EOF -> return [(EOF, Accept)]
             _ -> return []
     tab <- M.unions <$> sequence
             [M.fromList <$> actions' it | it <- S.toList items]

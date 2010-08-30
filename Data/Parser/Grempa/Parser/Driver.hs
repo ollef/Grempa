@@ -5,7 +5,7 @@ import Data.Dynamic
 import Data.List
 import Data.Maybe
 
-import Data.Parser.Grempa.Parser.Error
+import Data.Parser.Grempa.Parser.Result
 import Data.Parser.Grempa.Parser.Table
 import qualified Data.Parser.Grempa.Grammar.Typed as T
 import Data.Parser.Grempa.Grammar.Token
@@ -26,7 +26,7 @@ rtToTyped unc funs (RTReduce r p tree) = applDynFun fun l
 driver :: Token s => (ActionFun s, GotoFun s, StateI) -> [s]
                   -> ParseResult s (ReductionTree s)
 driver (actionf, gotof, start) input =
-    driver' [start] (map Tok input ++ [RightEnd]) [] [] (0 :: Integer)
+    driver' [start] (map Tok input ++ [EOF]) [] [] (0 :: Integer)
   where
     driver' stack@(s:_) (a:rest) rt ests pos = --trace (show stack ++ "," ++ show (a:rest) ) $
       case actionf s a of
@@ -43,7 +43,7 @@ driver (actionf, gotof, start) input =
 type RTParseResult s = ParseResult s (ReductionTree s)
 
 resultDriver :: (Token s, Typeable a)
-             => (s' -> s) -> ProdFunTable -> T.GRId s a -> RTParseResult s' -> ParseResult s a
+             => (s' -> s) -> ProdFunTable -> T.Grammar s a -> RTParseResult s' -> ParseResult s a
 resultDriver unc funs _ rt =  fromJust
                           <$> fromDynamic
                           <$> rtToTyped unc (prodFunToFun funs)

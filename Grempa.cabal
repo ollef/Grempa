@@ -14,9 +14,11 @@ License:             BSD3
 License-file:        LICENSE
 Author:              Olle Fredriksson
 Maintainer:          fredriksson.olle@gmail.com
+Copyright:           (c) 2010 Olle Fredriksson
+Stability:           Experimental
 Category:            Parsing
 Build-type:          Simple
-Extra-source-files:  README.lhs, examples/*.hs examples/Test.fs
+Extra-source-files:  README.lhs, READMEStatic.lhs examples/*.hs examples/Test.fs
 Cabal-version:       >=1.2
 Library
     Build-depends:   array            == 0.3.*
@@ -31,9 +33,16 @@ Library
                    --, Text.Grempa.Parser.Graph
     Other-modules:   Data.Parser.Grempa.Aux.Aux
                    , Data.Parser.Grempa.Aux.MultiMap
+                   , Data.Parser.Grempa.Grammar.Token
+                   , Data.Parser.Grempa.Grammar.Typed
+                   , Data.Parser.Grempa.Grammar.Untyped
                    , Data.Parser.Grempa.Parser.Driver
-                   , Data.Parser.Grempa.Parser.Error
+                   , Data.Parser.Grempa.Parser.Dynamic
                    , Data.Parser.Grempa.Parser.Item
                    , Data.Parser.Grempa.Parser.LALR
+                   , Data.Parser.Grempa.Parser.Result
                    , Data.Parser.Grempa.Parser.SLR
+                   , Data.Parser.Grempa.Parser.Static
                    , Data.Parser.Grempa.Parser.Table
+    Extensions:    GADTs
+    GHC-Options:   -Wall

@@ -1,11 +1,11 @@
-Grempa
-Olle Fredriksson 2010
-
 The extension enabling recursive do notation.
 
 > {-# LANGUAGE DoRec #-}
 
 > module README where
+
+> import Data.Parser.Grempa.Dynamic
+> import Data.Parser.Grempa.Grammar
 
 * Grammars
 * Example 1 - A parser which will only accept the string "ab" or "ba" and
@@ -23,7 +23,7 @@ The type of this grammar tells us that it operates on (lists of) characters and
 will return a single character as a result.
 Note that a type signature is usually required for a grammar to typecheck.
 
-> ex1 :: GRId Char Char
+> ex1 :: Grammar Char Char
 
 Grammars are conveniently written in recursive do notation, which is not
 strictly necessary for this simple grammar, but will help later on.
@@ -59,14 +59,35 @@ and using the id function, a parser which returns the first character in the
 parsed string is achieved:
 
 >         [ id <@> 'a' <# 'b'
->         , id <@> 'b' <# 'a'
->         ]
+>         , id <@> 'b' <# 'a' >         ]
 
 Every grammar needs an entry rule - somewhere to start. This is achieved by the
 following:
 
 >   return x
 
-[INSERT CODE FOR MAKING DYNAMIC PARSER]
-See READMEStatic.lhs for the static version of this (which will be constructed
-at compile time).
+Here are some inputs to try out ex1 on. Only the first two should succeed.
+
+> ex1inputs = ["ab", "ba", "aa", "bb", "aba", ""]
+
+> parseEx1Dynamic :: Parser Char Char
+
+The function mkDynamicParser takes as a first argument a tuple consisting of a
+wrap and an unwrap function to be run on all input tokens before and after
+parsing respectively. This can sometimes be useful when the Eq and Ord
+instances of the token type are not what is desired in the parser, as we will
+see later in this readme.
+
+For this grammar, we will use the idWrapper (=(id, id)) which does not wrap
+the tokens.
+
+> parseEx1Dynamic = mkDynamicParser idWrapper ex1
+
+> runParseEx1Dynamic = map parseEx1Dynamic ex1inputs
+
+See READMEStatic.lhs for the static (constructed at compile time) version of
+this parser.
+
+* Example 2 - A simple calculator
+
+

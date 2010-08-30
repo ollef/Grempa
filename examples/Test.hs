@@ -36,7 +36,7 @@ instance Arbitrary E where
             , (10, return Var)
             ]
 
-e :: GRId Char E
+e :: Grammar Char E
 e = do
     rec
       e  <- rule [ (:+:) <@> e <# '+' <#> t
@@ -66,7 +66,7 @@ data E1 = E1 :++: E1
         | E1Var String
   deriving (Show, Typeable)
 
-e1 :: GRId Sym E1
+e1 :: Grammar Sym E1
 e1 = do
     rec
       e  <- rule [ (:++:) <@> e <# Plus  <#> t
@@ -85,7 +85,7 @@ e1 = do
 
 e1inp = [Ident "x",Times,Ident "y",Times,LParen,Ident "x1",Plus,Ident "y1",RParen]
 
-test :: Grammar Char (RId Char Int)
+test :: Grammar Char Int
 test = do
     rec
       x <- rule [(\y (Just z) -> y + z) <@> y <#> z]
@@ -93,7 +93,7 @@ test = do
       z <- rule [(Just 3)               <@  '2']
     return x
 
-test2 :: Grammar Char (RId Char [Char])
+test2 :: Grammar Char [Char]
 test2 = do
     rec
       x <- rule [(\a b x -> a:b:x) <@ 'x' <#> 'a' <#> 'b' <#> x
@@ -115,7 +115,7 @@ L ::= *R
 R ::=  L
 -}
 
-ex :: GRId Char S
+ex :: Grammar Char S
 ex = do
   rec
     s <- rule [SAss   <@> l <# '=' <#> r
@@ -129,7 +129,7 @@ ex = do
 data Sx = Sx C C deriving (Show, Typeable)
 data C  = Cc C | Cd deriving (Show, Typeable)
 
-ex454 :: GRId Char Sx
+ex454 :: Grammar Char Sx
 ex454 = do
   rec
     s <- rule [Sx <@> c  <#> c]
@@ -137,7 +137,7 @@ ex454 = do
               ,Cd <@ 'd']
   return s
 
-list :: GRId Char [Char]
+list :: Grammar Char String
 list = do
   rec
     x <- rule [epsilon []
