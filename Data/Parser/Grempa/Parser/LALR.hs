@@ -50,18 +50,14 @@ closureLR1 = recTraverseG closure'
     closure' is = (is `S.union` res, res)
       where res = S.unions $ map closureI $ S.toList is
     closureI i = case nextSymbol i of
-        Tok (SRule rid) ->
-            S.unions [firstItems rid b | b <- S.toList $ firsts i]
+        Tok (SRule rid) -> S.unions [firstItems rid b | b <- firstA beta (itemLA i)]
+          where beta = drop (getItPos i + 1) (getItProd i)
         _               -> S.empty
-      where
-        firsts it = unETokSet $ firstProd $ itTail it
-        itTail it = drop (getItPos it + 1) (getItProd it)
-        --unETokSet :: Token s => Set (ETok s) -> Set (Tok s)
-        unETokSet s = case Epsilon `S.member` s of
-            True -> S.insert (itemLA i)
-                  $ S.map (Tok . unETok)
-                  $ S.delete Epsilon s
-            False -> S.map (Tok . unETok) s
+    firstA prod sym = let f = firstProd prod in
+        if Epsilon `S.member` f
+            then S.toList (S.insert sym $ unETokSet f)
+            else map (Tok . unETok) $ S.toList f
+    unETokSet = S.map (Tok . unETok) . S.delete Epsilon
     -- | Get the items with the dot at the beginning from a rule
     firstItems :: Token s => RId s -> Tok s -> Set (Item s)
     firstItems rid@(RId _ prods) a = S.fromList
@@ -165,7 +161,7 @@ gotos :: Token s
 gotos (items, i) = do
     nt     <- asks gNonTerminals
     map (A.first (i,)) <$> catMaybes <$> sequence
-        [do j <- askItemSet (goto items a)
+        [do j <- askItemSet $ goto items a
             return $ case j of
                 Nothing -> Nothing
                 Just x  -> Just (ai, x)
@@ -195,11 +191,11 @@ actions (items, i) = do
             [M.fromList <$> actions' it | it <- S.toList items]
     return (i, (mapShifts tab, def (mapShifts tab)))
   where
-    def tab = case M.null (reds tab) of
-        True  -> Error $ M.keys $ shifts tab
-        False -> head  $ M.elems (reds tab)
+    def tab = if M.null (reds tab)
+        then Error $ M.keys $ shifts tab
+        else head (M.elems $ reds tab)
     mapShifts tab = M.map (addShifts $ M.keys $ shifts tab) tab
       where addShifts ss (Reduce r pr p _) = Reduce r pr p ss
             addShifts _  x                 = x
-    reds   = M.filter isReduce
     shifts = M.filter (not . isReduce)
+    reds   = M.filter isReduce

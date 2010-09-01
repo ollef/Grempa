@@ -25,14 +25,16 @@ import Data.Parser.Grempa.Grammar.Untyped
 actToFun :: Ord t => ActionTable t -> ActionFun t
 actToFun table st t = fromMaybe def $ M.lookup t stateTable
   where
-    a                 = listToArr table
-    (stateTable, def) = a ! st
+    a                 = listToArr (M.empty, Error []) table
+    (stateTable, def) = if inRange (bounds a) st
+                            then a ! st
+                            else (M.empty, Error [])
 
 -- | Convert an goto table to a function (operating on an array)
 gotoToFun :: GotoTable t -> GotoFun t
 gotoToFun table st rule = a ! (st, rule)
   where
-    a      = listToArr table
+    a      = listToArr (-1) table
 
 -- | Generate and run a dynamic parser, returning the result reduction tree
 dynamicRT :: (Token t', Token t, Typeable a)

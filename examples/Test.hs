@@ -64,7 +64,7 @@ instance ToPat Sym where toPat = toConstrPat
 data E1 = E1 :++: E1
         | E1 :**: E1
         | E1Var String
-  deriving (Show, Typeable)
+  deriving (Eq, Show, Typeable)
 
 e1 :: Grammar Sym E1
 e1 = do
@@ -101,11 +101,11 @@ test2 = do
     return x
 
 data S = SAss L R | SR R
-  deriving (Show, Typeable)
+  deriving (Eq, Show, Typeable)
 data L = Star R | LIdent
-  deriving (Show, Typeable)
+  deriving (Eq, Show, Typeable)
 data R = R L
-  deriving (Show, Typeable)
+  deriving (Eq, Show, Typeable)
 
 {-
 S ::=  L = R
@@ -126,8 +126,8 @@ ex = do
   return s
 
 
-data Sx = Sx C C deriving (Show, Typeable)
-data C  = Cc C | Cd deriving (Show, Typeable)
+data Sx = Sx C C deriving (Eq, Show, Typeable)
+data C  = Cc C | Cd deriving (Eq, Show, Typeable)
 
 ex454 :: Grammar Char Sx
 ex454 = do

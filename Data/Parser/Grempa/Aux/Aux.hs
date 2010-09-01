@@ -85,6 +85,6 @@ instance (IxMinMax a, IxMinMax b) => IxMinMax (a, b) where
 
 -- | Convert a list of mappings to an array using the IxMinMax instance to
 --   determine the array bounds.
-listToArr :: (IxMinMax k, Ix k) => [(k, v)] -> Array k v
-listToArr ass = array (ixMin keys, ixMax keys) ass
+listToArr :: (IxMinMax k, Ix k) => v -> [(k, v)] -> Array k v
+listToArr def ass = accumArray (flip const) def (ixMin keys, ixMax keys) ass
   where keys = map fst ass

@@ -28,7 +28,7 @@ driver :: Token s => (ActionFun s, GotoFun s, StateI) -> [s]
 driver (actionf, gotof, start) input =
     driver' [start] (map Tok input ++ [EOF]) [] [] (0 :: Integer)
   where
-    driver' stack@(s:_) (a:rest) rt ests pos = --trace (show stack ++ "," ++ show (a:rest) ) $
+    driver' stack@(s:_) (a:rest) rt ests pos =
       case actionf s a of
           Shift t -> driver' (t : stack) rest (RTTerm (unTok a) : rt) [] (pos + 1)
           Reduce rule prod len es -> driver' (got : stack') (a : rest) rt' (es ++ ests) pos
@@ -38,7 +38,7 @@ driver (actionf, gotof, start) input =
               rt' = RTReduce rule prod (reverse $ take len rt) : drop len rt
           Accept -> Right $ head rt
           Error es -> Left $ ParseError (nub $ es ++ ests) pos
-    driver' _ _ _ _ pos = Left $ InternalParserError pos
+    driver' _ _ _ ests pos = Left $ InternalParserError pos
 
 type RTParseResult s = ParseResult s (ReductionTree s)
 

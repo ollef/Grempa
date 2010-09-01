@@ -30,7 +30,7 @@ mkActFun tab = do
     lamE [varP st, varP tok]
         $ caseE (varE st)
             $ map (mkMatch tok) tab
-                ++ [match wildP (normalB [|error "Invalid parsing state"|]) []]
+                ++ [match wildP (normalB [|Error []|]) []]
   where
     mkMatch tok (st, (tokTab, def)) =
         match (toPat st) (normalB
@@ -48,7 +48,7 @@ mkGotoFun tab = do
     lamE [varP st, varP r]
         $ caseE (tupE [varE st, varE r])
             $ map mkMatch tab
-            ++ [match wildP (normalB [|error "Invalid parsing state"|]) []]
+            ++ [match wildP (normalB [|-1|]) []] -- Hacky (unknown goto is -1)
   where
     mkMatch (k, v) =
         match (toPat k) (normalB [|v|]) []

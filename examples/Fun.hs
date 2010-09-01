@@ -12,25 +12,25 @@ import Lex
 -- * Result data definitions
 data Def
     = Def String [Pat] Expr
-  deriving (Show, Typeable)
+  deriving (Eq, Show, Typeable)
 
 data Expr
     = ECase Expr [Branch]
     | ELet Def Expr
-    | EApp Expr [Expr]
+    | EApp Expr Expr
     | EOp  Expr String Expr
     | EVar String
     | ENum Integer
-  deriving (Show, Typeable)
+  deriving (Eq, Show, Typeable)
 
 data Branch
     = Branch Pat Expr
-  deriving (Show, Typeable)
+  deriving (Eq, Show, Typeable)
 
 data Pat
     = PCon String [Pat]
     | PVar String
-  deriving (Show, Typeable)
+  deriving (Eq, Show, Typeable)
 
 -- | Grammar for the language
 lang :: Grammar Tok [Def]
@@ -67,7 +67,7 @@ lang = do
         ,id    <@> expr2
         ]
     expr2 <- rule
-        [EApp  <@> expr2 <#> expr3s
+        [EApp  <@> expr2 <#> expr3
         ,id    <@> expr3
         ]
     expr3 <- rule
@@ -75,7 +75,7 @@ lang = do
         ,ENum . fromNum <@> num
         ,paren expr
         ]
-    expr3s  <- several expr3
+    --expr3s  <- several expr3
 
     casebr  <- rule [Branch <@> pat <# RightArrow <#> expr]
     casebrs <- severalInter SemiColon casebr

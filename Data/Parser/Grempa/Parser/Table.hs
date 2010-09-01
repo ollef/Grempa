@@ -28,7 +28,7 @@ unError _          = []
 
 isReduce :: Action s -> Bool
 isReduce (Reduce {}) = True
-isReduce _          = False
+isReduce _           = False
 
 $(deriveLift ''Action)
 
@@ -43,7 +43,7 @@ type ProdFunFun    = RuleI  -> ProdI -> DynFun
 
 prodFunToFun :: ProdFunTable -> ProdFunFun
 prodFunToFun table r p = a ! (r, p)
-  where a = listToArr table
+  where a = listToArr (error "prodFun") table
 
 data DynFun = DynFun Dynamic [Bool]
 

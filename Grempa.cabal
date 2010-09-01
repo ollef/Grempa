@@ -27,6 +27,7 @@ Library
                    , monads-fd        == 0.1.*
                    , template-haskell == 2.4.*
                    , th-lift          == 0.5.*
+                   , QuickCheck       == 2.2.*
     Exposed-modules: Data.Parser.Grempa.Grammar
                    , Data.Parser.Grempa.Static
                    , Data.Parser.Grempa.Dynamic
@@ -44,5 +45,6 @@ Library
                    , Data.Parser.Grempa.Parser.SLR
                    , Data.Parser.Grempa.Parser.Static
                    , Data.Parser.Grempa.Parser.Table
+                   , Data.Parser.Grempa.Test.Arb
     Extensions:    GADTs
     GHC-Options:   -Wall

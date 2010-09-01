@@ -102,17 +102,23 @@ nonTerminals = map SRule
 first :: Token s => Symbol s -> Set (ETok s)
 first = evalDone . first'
 
-first' :: Token s => Symbol s -> Done (RId s) () (Set (ETok s))
+--first' :: Token s => Symbol s -> Done (RId s) () (Set (ETok s))
+first' :: Token s => Symbol s -> DoneA (RId s) (Set (ETok s))
 first' (STerm s)             = return $ S.singleton (ETok s)
-first' (SRule rid@(RId _ r)) = ifNotDoneG rid (const S.empty) $ do
-    putDone rid () -- res
-    S.unions <$> mapM firstProd' r
+first' (SRule rid@(RId _ r)) = ifNotDone rid $ do
+  rec
+    putDone rid $ case Epsilon `S.member` res of
+        True  -> S.singleton Epsilon
+        False -> S.empty
+    res <- S.unions <$> mapM firstProd' r
+  return res
+  where flipIf a b p = if p then a else b
 
 -- | Get the first tokens of a production
 firstProd :: Token s => Prod s -> Set (ETok s)
 firstProd = evalDone . firstProd'
 
-firstProd' :: Token s => Prod s -> Done (RId s) () (Set (ETok s))
+firstProd' :: Token s => Prod s -> DoneA (RId s) (Set (ETok s))
 firstProd' []     = return $ S.singleton Epsilon
 firstProd' (x:xs) = do
     fx <- first' x

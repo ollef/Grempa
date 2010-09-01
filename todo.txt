@@ -1,7 +1,7 @@
 errormeddelanden för konflikter
-rensa kod, få bort extensions om möjligt
+gör genereringen snabbare genom att förräkna massa saker?
 QuickCheck
-dokumentation
-errormeddelanden funkar inte helt för ex ("x=x=x")
+--dokumentation
+--errormeddelanden funkar inte helt för ex ("x=x=x")
 --graph använder senaste graphviz? eller ta bort kanske
 deriving read
