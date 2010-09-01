@@ -25,10 +25,12 @@ import Data.Parser.Grempa.Grammar.Untyped
 actToFun :: Ord t => ActionTable t -> ActionFun t
 actToFun table st t = fromMaybe def $ M.lookup t stateTable
   where
-    a                 = listToArr (M.empty, Error []) table
+    a                 = listToArr (M.empty, Error []) table'
     (stateTable, def) = if inRange (bounds a) st
                             then a ! st
                             else (M.empty, Error [])
+    table' = map (second3 M.fromList) table
+    second3 f (a,b,c) = (a, f b, c)
 
 -- | Convert an goto table to a function (operating on an array)
 gotoToFun :: GotoTable t -> GotoFun t

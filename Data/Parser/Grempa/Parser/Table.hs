@@ -32,7 +32,7 @@ isReduce _           = False
 
 $(deriveLift ''Action)
 
-type ActionTable s = [(StateI, (Map (Tok s) (Action s), Action s))]
+type ActionTable s = [(StateI, [(Tok s, Action s)], Action s)]
 type GotoTable   s = [((StateI, RuleI), StateI)]
 
 type ActionFun s   = StateI -> Tok s -> Action s

@@ -76,7 +76,7 @@ gotos (items, i) = do
 -- | Create action table
 actions :: Token s
         => (Set (Item s), StateI)
-        -> Gen Item s (StateI, (Map (Tok s) (Action s), Action s))
+        -> Gen Item s (StateI, [(Tok s, Action s)], Action s)
 actions (items, i) = do
     start  <- asks gStartRule
     rs     <- asks gRules
@@ -93,13 +93,15 @@ actions (items, i) = do
                            | a <- as]
                 | otherwise     -> return [(EOF, Accept)]
             _ -> return []
-    tab <- M.unions <$> sequence
-        [M.fromList <$> actions' it | it <- S.toList items]
-    return (i, (mapShifts tab, def (mapShifts tab)))
+    tab <- concat <$> sequence
+        [actions' it | it <- S.toList items]
+    return (i, mapShifts tab, def (mapShifts tab))
   where
-    def tab = case M.null (reds tab) of
-        True  -> Error $ M.keys $ shifts tab
-        False -> head  $ M.elems (reds tab)
-    mapShifts tab = M.map (\(Reduce r pr p _) -> Reduce r pr p $ M.keys $ shifts tab) tab
-    reds   = M.filter isReduce
-    shifts = M.filter (not . isReduce)
+    def tab = case null (reds tab) of
+        True  -> Error $ keys $ shifts tab
+        False -> head  $ elems $ reds tab
+    mapShifts tab = map (\(Reduce r pr p _) -> Reduce r pr p $ keys $ shifts tab) tab
+    reds   = filter isReduce
+    shifts = filter (not . isReduce)
+    keys = map fst
+    elems = map snd

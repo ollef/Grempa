@@ -35,7 +35,7 @@ mkActFun tab = do
     mkMatch tok (st, (tokTab, def)) =
         match (toPat st) (normalB
             ( caseE (varE tok)
-                $ map mkMatch' (M.toList tokTab)
+                $ map mkMatch' tokTab
                     ++ [match wildP (normalB [|def|]) []]
             )) []
     mkMatch' (v, res) = match (toPat v) (normalB [|res|]) []

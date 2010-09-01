@@ -170,7 +170,7 @@ gotos (items, i) = do
 -- | Create action table
 actions :: Token s
         => (Set (Item (Maybe s)), StateI)
-        -> Gen Item (Maybe s) (StateI, (Map (Tok s) (Action s), Action s))
+        -> Gen Item (Maybe s) (StateI, [(Tok s, Action s)], Action s))
 actions (items, i) = do
     start  <- asks gStartRule
     let actions' item@Item {itemRId = rid@(RId ri _)} = case nextSymbol item of
@@ -187,8 +187,8 @@ actions (items, i) = do
                                       (length $ getItProd item) [])]
                 | itemLA item == EOF -> return [(EOF, Accept)]
             _ -> return []
-    tab <- M.unions <$> sequence
-            [M.fromList <$> actions' it | it <- S.toList items]
+    tab <- concat <$> sequence
+            [actions' it | it <- S.toList items]
     return (i, (mapShifts tab, def (mapShifts tab)))
   where
     def tab = if M.null (reds tab)
