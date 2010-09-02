@@ -6,6 +6,7 @@ module Data.Parser.Grempa.Parser.Dynamic
     , idWrapper
     ) where
 
+import qualified Control.Arrow as A
 import Data.Array
 import Data.Data
 import Data.Function
@@ -29,8 +30,7 @@ actToFun table st t = fromMaybe def $ M.lookup t stateTable
     (stateTable, def) = if inRange (bounds a) st
                             then a ! st
                             else (M.empty, Error [])
-    table' = map (second3 M.fromList) table
-    second3 f (a,b,c) = (a, f b, c)
+    table' = map (A.second (A.first M.fromList)) table
 
 -- | Convert an goto table to a function (operating on an array)
 gotoToFun :: GotoTable t -> GotoFun t

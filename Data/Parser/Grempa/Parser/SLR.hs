@@ -3,8 +3,6 @@ module Data.Parser.Grempa.Parser.SLR where
 import Control.Applicative
 import qualified Control.Arrow as A
 import Control.Monad.Reader
-import Data.Map(Map)
-import qualified Data.Map as M
 import Data.Set(Set)
 import qualified Data.Set as S
 import Data.Maybe
@@ -76,7 +74,7 @@ gotos (items, i) = do
 -- | Create action table
 actions :: Token s
         => (Set (Item s), StateI)
-        -> Gen Item s (StateI, [(Tok s, Action s)], Action s)
+        -> Gen Item s (StateI, ([(Tok s, Action s)], Action s))
 actions (items, i) = do
     start  <- asks gStartRule
     rs     <- asks gRules
@@ -95,13 +93,15 @@ actions (items, i) = do
             _ -> return []
     tab <- concat <$> sequence
         [actions' it | it <- S.toList items]
-    return (i, mapShifts tab, def (mapShifts tab))
+    return (i, (mapShifts tab, def (mapShifts tab)))
   where
-    def tab = case null (reds tab) of
-        True  -> Error $ keys $ shifts tab
-        False -> head  $ elems $ reds tab
-    mapShifts tab = map (\(Reduce r pr p _) -> Reduce r pr p $ keys $ shifts tab) tab
-    reds   = filter isReduce
-    shifts = filter (not . isReduce)
-    keys = map fst
-    elems = map snd
+    def tab = if null (reds tab)
+        then Error $ keys $ shifts tab
+        else head  $ elems $ reds tab
+    mapShifts tab = map (A.second $ addShifts $ keys $ shifts tab) tab
+      where addShifts ss (Reduce r pr p _) = Reduce r pr p ss
+            addShifts _  x                 = x
+    reds   = filter (isReduce . snd)
+    shifts = filter (not . isReduce . snd)
+    keys   = map fst
+    elems  = map snd

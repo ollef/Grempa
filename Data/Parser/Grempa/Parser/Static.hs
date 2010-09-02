@@ -9,7 +9,6 @@ module Data.Parser.Grempa.Parser.Static
 
 import Control.Applicative
 import Data.Dynamic
-import qualified Data.Map as M
 import Data.Data
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax

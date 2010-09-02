@@ -4,7 +4,6 @@ module Data.Parser.Grempa.Test.Arb(prop_parser) where
 
 import Control.Applicative
 import qualified Control.Arrow as A
-import Control.Monad
 import Data.Dynamic
 import Data.Maybe
 import Test.QuickCheck

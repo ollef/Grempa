@@ -112,7 +112,6 @@ first' (SRule rid@(RId _ r)) = ifNotDone rid $ do
         False -> S.empty
     res <- S.unions <$> mapM firstProd' r
   return res
-  where flipIf a b p = if p then a else b
 
 -- | Get the first tokens of a production
 firstProd :: Token s => Prod s -> Set (ETok s)

@@ -37,6 +37,7 @@ Library
                    , Data.Parser.Grempa.Grammar.Token
                    , Data.Parser.Grempa.Grammar.Typed
                    , Data.Parser.Grempa.Grammar.Untyped
+                   , Data.Parser.Grempa.Parser.Conflict
                    , Data.Parser.Grempa.Parser.Driver
                    , Data.Parser.Grempa.Parser.Dynamic
                    , Data.Parser.Grempa.Parser.Item

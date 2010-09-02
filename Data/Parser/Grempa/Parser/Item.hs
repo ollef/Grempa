@@ -1,10 +1,8 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
 module Data.Parser.Grempa.Parser.Item where
 
-import qualified Control.Arrow as A
 import Control.Applicative
 import Control.Monad.Reader
-import Data.Function
 import Data.List
 import Data.Map(Map)
 import qualified Data.Map as M
@@ -16,8 +14,6 @@ import Data.Parser.Grempa.Aux.Aux
 import Data.Parser.Grempa.Grammar.Untyped
 import Data.Parser.Grempa.Parser.Table
 import Data.Parser.Grempa.Grammar.Token
-
-import Debug.Trace
 
 class (Eq (i s), Ord (i s), Show (i s), Token s) => It i s where
     itRId     :: i s -> RId s
@@ -100,6 +96,5 @@ askItemSet x = do
     case res of
         Just r  -> return $ Just r
         Nothing -> do
-            g <- asks gStartRule
             is <- asks gItemSets
             return $ snd <$> listToMaybe (filter (S.isSubsetOf x . fst) is)

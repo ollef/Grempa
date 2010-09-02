@@ -3,7 +3,6 @@ module Data.Parser.Grempa.Parser.Table where
 
 import Data.Array
 import Data.Dynamic
-import Data.Map(Map)
 import Language.Haskell.TH.Lift
 
 import Data.Parser.Grempa.Aux.Aux
@@ -32,7 +31,7 @@ isReduce _           = False
 
 $(deriveLift ''Action)
 
-type ActionTable s = [(StateI, [(Tok s, Action s)], Action s)]
+type ActionTable s = [(StateI, ([(Tok s, Action s)], Action s))]
 type GotoTable   s = [((StateI, RuleI), StateI)]
 
 type ActionFun s   = StateI -> Tok s -> Action s

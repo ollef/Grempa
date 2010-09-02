@@ -38,7 +38,7 @@ driver (actionf, gotof, start) input =
               rt' = RTReduce rule prod (reverse $ take len rt) : drop len rt
           Accept -> Right $ head rt
           Error es -> Left $ ParseError (nub $ es ++ ests) pos
-    driver' _ _ _ ests pos = Left $ InternalParserError pos
+    driver' _ _ _ _ pos = Left $ InternalParserError pos
 
 type RTParseResult s = ParseResult s (ReductionTree s)
 
