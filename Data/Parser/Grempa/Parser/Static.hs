@@ -8,11 +8,13 @@ module Data.Parser.Grempa.Parser.Static
     ) where
 
 import Control.Applicative
+import Control.Monad
 import Data.Dynamic
 import Data.Data
 import Language.Haskell.TH
 import Language.Haskell.TH.Syntax
 
+import Data.Parser.Grempa.Parser.Conflict
 import Data.Parser.Grempa.Parser.Driver
 import Data.Parser.Grempa.Parser.LALR
 import Data.Parser.Grempa.Parser.Table
@@ -55,12 +57,20 @@ mkGotoFun tab = do
 -- | Make a function returning the reduction tree from a grammar
 staticRT :: (Typeable a, ToPat t, Token t, Lift t)
           => T.Grammar t a -> ExpQ
-staticRT g = T.evalGrammar $ do
-    g' <- T.augment g
-    let (unt, _)    = unType id g'
-        (at,gt,st)  = lalr unt
-        res         = [|driver ($(mkActFun at), $(mkGotoFun gt), st)|]
-    return res
+staticRT g = do
+    let (res, acon, gcon) = T.evalGrammar $ do
+        g' <- T.augment g
+        let (unt, _)    = unType id g'
+            (at,gt,st)  = lalr unt
+            (at', ac)   = actionConflicts at
+            (gt', gc)   = gotoConflicts   gt
+            driv        = [|driver ($(mkActFun at'), $(mkGotoFun gt'), st)|]
+        return (driv, ac, gc)
+    when (not $ null acon) $
+        report False $ "Conflict in action table: " ++ show acon
+    when (not $ null gcon) $
+        report False $ "Conflict in goto table: "   ++ show gcon
+    res
 
 -- | Make a static parser from a grammar.
 --

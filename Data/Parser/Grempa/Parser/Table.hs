@@ -19,8 +19,15 @@ data Action s = Shift  StateI
               | Reduce RuleI ProdI StackI [Tok s]
               | Accept
               | Error [Tok s]
-  deriving (Eq, Show)
+  deriving (Eq, Ord)
 
+instance Show s => Show (Action s) where
+    show (Shift i)        = "Shift "  ++ show i
+    show (Reduce r p s _) = "Reduce " ++ show (r, p, s)
+    show Accept           = "Accept"
+    show (Error _)        = "Error"
+
+  
 unError :: Action s -> [Tok s]
 unError (Error es) = es
 unError _          = []
