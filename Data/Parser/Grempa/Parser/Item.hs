@@ -1,5 +1,13 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
-module Data.Parser.Grempa.Parser.Item where
+module Data.Parser.Grempa.Parser.Item
+    ( It(..), getItProd, isKernelIt
+    , kernel
+    , nextSymbol
+    , goto
+    , nextItPos
+    , Gen, GenData(..), runGen, gen
+    , askItemSet
+    ) where
 
 import Control.Applicative
 import Control.Monad.Reader

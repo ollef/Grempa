@@ -1,7 +1,12 @@
 {-# LANGUAGE GADTs, DoRec #-}
-module Data.Parser.Grempa.Grammar.Untyped where
+module Data.Parser.Grempa.Grammar.Untyped
+    ( Rule, Prod, Symbol(..), RId(..)
+    , unType
+    , rules, terminals, nonTerminals
+    , first, firstProd, follow
+    )where
 
-import Control.Arrow
+import qualified Control.Arrow as A
 import Control.Applicative
 import Control.Monad.State
 import qualified Data.Map as M
@@ -38,7 +43,7 @@ type UnTypeState s' = State (Map Int (RId s'), ProdFunTable)
 --   a dynamic containing the construction function of the typed
 --   production
 unType :: (s -> s') -> T.RId s a -> (RId s', ProdFunTable)
-unType cs = second snd . flip runState (M.empty, []) . unTypeR cs
+unType cs = A.second snd . flip runState (M.empty, []) . unTypeR cs
   where
     unTypeR :: (s -> s') -> T.RId s a -> UnTypeState s' (RId s')
     unTypeR c (T.RId i r) = do

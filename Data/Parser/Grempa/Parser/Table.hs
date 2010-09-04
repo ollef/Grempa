@@ -1,5 +1,13 @@
 {-# LANGUAGE TemplateHaskell #-}
-module Data.Parser.Grempa.Parser.Table where
+module Data.Parser.Grempa.Parser.Table
+    ( StateI, RuleI, StackI, ProdI
+    , Action(..)
+    , unError
+    , isReduce
+    , ActionTable, GotoTable, ActionFun, GotoFun, ProdFunTable, ProdFunFun
+    , prodFunToFun
+    , DynFun(..), applDynFun
+    )where
 
 import Data.Array
 import Data.Dynamic
@@ -27,7 +35,7 @@ instance Show s => Show (Action s) where
     show Accept           = "Accept"
     show (Error _)        = "Error"
 
-  
+
 unError :: Action s -> [Tok s]
 unError (Error es) = es
 unError _          = []

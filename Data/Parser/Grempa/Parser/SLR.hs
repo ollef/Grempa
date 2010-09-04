@@ -1,5 +1,8 @@
 {-# LANGUAGE TupleSections, FlexibleInstances, MultiParamTypeClasses #-}
-module Data.Parser.Grempa.Parser.SLR where
+module Data.Parser.Grempa.Parser.SLR
+    ( Item(..)
+    , slr
+    ) where
 import Control.Applicative
 import qualified Control.Arrow as A
 import Control.Monad.Reader

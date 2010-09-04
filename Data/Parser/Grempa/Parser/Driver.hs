@@ -1,4 +1,8 @@
-module Data.Parser.Grempa.Parser.Driver where
+module Data.Parser.Grempa.Parser.Driver
+    ( driver
+    , resultDriver
+    , ReductionTree
+    ) where
 
 import Control.Applicative
 import Data.Dynamic

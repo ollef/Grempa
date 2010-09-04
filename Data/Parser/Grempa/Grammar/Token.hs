@@ -1,13 +1,18 @@
 -- | The token datatypes used internally in the parser generators.
 {-# LANGUAGE TemplateHaskell, DeriveDataTypeable, UndecidableInstances, FlexibleInstances #-}
-module Data.Parser.Grempa.Grammar.Token where
+module Data.Parser.Grempa.Grammar.Token
+    ( Tok(..)
+    , tokToString
+    , ETok(..)
+    , Token(..)
+    ) where
 
 import Data.Typeable
 import Data.Data
 import Language.Haskell.TH.Lift
 
 -- | A Tok is either a token or 'EOF'.
-data Tok t  = Tok t
+data Tok t  = Tok {unTok :: t}
             | EOF
   deriving (Eq, Ord, Show, Data, Typeable)
 
@@ -16,11 +21,6 @@ $(deriveLift ''Tok)
 instance Functor Tok where
     fmap f (Tok s) = Tok (f s)
     fmap _ EOF     = EOF
-
--- | Get the token from a 'Tok' that is not 'RightEnd'
-unTok :: Tok t -> t
-unTok (Tok t) = t
-unTok _       = error "unTok"
 
 -- | Show the token in a more readable way. Used for error messages.
 tokToString :: Show s => Tok s -> String

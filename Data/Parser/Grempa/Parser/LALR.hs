@@ -1,5 +1,7 @@
 {-# LANGUAGE TupleSections, DoRec, FlexibleInstances, MultiParamTypeClasses #-}
-module Data.Parser.Grempa.Parser.LALR where
+module Data.Parser.Grempa.Parser.LALR
+    ( lalr
+    ) where
 
 import Control.Applicative
 import qualified Control.Arrow as A
