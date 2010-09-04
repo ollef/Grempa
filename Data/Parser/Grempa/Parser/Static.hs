@@ -58,18 +58,14 @@ mkGotoFun tab = do
 staticRT :: (Typeable a, ToPat t, Token t, Lift t)
           => T.Grammar t a -> ExpQ
 staticRT g = do
-    let (res, acon, gcon) = T.evalGrammar $ do
+    let (res, confls) = T.evalGrammar $ do
         g' <- T.augment g
         let (unt, _)    = unType id g'
             (at,gt,st)  = lalr unt
-            (at', ac)   = actionConflicts at
-            (gt', gc)   = gotoConflicts   gt
-            driv        = [|driver ($(mkActFun at'), $(mkGotoFun gt'), st)|]
-        return (driv, ac, gc)
-    when (not $ null acon) $
-        report False $ "Conflict in action table: " ++ show acon
-    when (not $ null gcon) $
-        report False $ "Conflict in goto table: "   ++ show gcon
+            (at', ac)   = conflicts at
+            driv        = [|driver ($(mkActFun at'), $(mkGotoFun gt), st)|]
+        return (driv, ac)
+    forM_ confls $ report False . showConflict
     res
 
 -- | Make a static parser from a grammar.

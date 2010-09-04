@@ -1,0 +1,45 @@
+Grempa 0.1.0
+Embedded grammar DSL and LALR parser generator
+Author: Olle Fredriksson
+
+* Building
+
+    Use Cabal. Example:
+
+    > cabal configure
+    > cabal build
+    > cabal install
+
+* Documentation
+
+    To generate the documentation for the different modules, use Cabal.
+
+    > cabal configure
+    > cabal haddock
+
+    Also refer to the examples.
+
+* Examples
+
+    The examples directory contains examples of varying complexity and serves
+    as an introduction to the usage of the library.
+
+    The examples are numbered, which serves as a suggested reading order.
+
+* Testing
+
+    To also compile the module for generating random inputs and their expected
+    outputs for your grammar, and testing a generated parser against that, use the
+    test flag. Example:
+
+    > cabal configure -ftest
+    > cabal build
+    > cabal install
+
+* Bugs
+
+    If you find a bug, please send a bug report to fredriksson.olle@gmail.com.
+
+* License
+
+    Refer to the file LICENSE in this directory.

@@ -4,7 +4,7 @@ module Data.Parser.Grempa.Grammar.Token
     ( Tok(..)
     , tokToString
     , ETok(..)
-    , Token(..)
+    , Token
     ) where
 
 import Data.Typeable

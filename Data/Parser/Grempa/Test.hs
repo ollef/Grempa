@@ -1,6 +1,6 @@
 -- | Generate arbitrary input strings for a grammar and see that it is
 --   able to parse them.
-module Data.Parser.Grempa.Test.Arb(prop_parser) where
+module Data.Parser.Grempa.Test(prop_parser) where
 
 import Control.Applicative
 import qualified Control.Arrow as A
@@ -46,7 +46,32 @@ isRec = not . null . filter isRule
     isRule (SRule {}) = True
     isRule _          = False
 
-prop_parser :: (Show a, Show s, Eq a, Typeable a, Typeable s) => Parser s a -> T.Grammar s a -> Property
+-- | QuickCheck property for seeing if a parser can parse everything produced
+--   by a grammar and get the expected result.
+--
+--   There are cases where the property will fail even though the parser is
+--   correct. That can happen when there is an 'epsilon' production that makes
+--   it valid to make the result tree nest one more level without eating any of
+--   the input. The parsers generated will not do this, but the random input
+--   generator currently will (this is a bug).
+--   An example of this is the following:
+--
+-- > data Expr = ... | EApp Expr [Expr]
+-- > grammar = ...
+-- >     expr <- rule [...
+-- >                  , EApp <@> expr <#> exprs
+-- >                  ]
+-- >     exprs <- several expr
+--
+--   Here, the random generator may produce @EApp expr []@ for some @expr@,
+--   as the rule 'several' @expr@ matches 0 or more @expr@s.
+--   which will have the same input token string as just @expr@ which is what
+--   the parser will parse, so the expected result and the parsed result will
+--   differ.
+prop_parser :: (Show a, Show s, Eq a, Typeable a, Typeable s)
+            => Parser s a    -- ^ Input parser
+            -> T.Grammar s a -- ^ The grammar used to generate the parser
+            -> Property
 prop_parser parser grammar =
     let (rid, funs) = unType id $ T.evalGrammar grammar
     in forAll (A.second (fromJust . fromDynamic)

@@ -1,13 +1,14 @@
+-- | Example 3: A grammar for a small functional language.
+--              This example also includes a naive lexer.
 {-# LANGUAGE DeriveDataTypeable, DoRec #-}
-module Fun (lang, Def)
-  where
+module Ex3Fun (fun, Def) where
 
 import Control.Applicative
 import Data.Data
 
 import Data.Parser.Grempa.Grammar
 
-import Lex
+import Ex3FunLex
 
 -- * Result data definitions
 data Def
@@ -21,6 +22,7 @@ data Expr
     | EOp  Expr String Expr
     | EVar String
     | ENum Integer
+    | ECon String
   deriving (Eq, Show, Typeable)
 
 data Branch
@@ -33,13 +35,15 @@ data Pat
   deriving (Eq, Show, Typeable)
 
 -- | Grammar for the language
-lang :: Grammar Tok [Def]
-lang = do
+fun :: Grammar Tok [Def]
+fun = do
   rec
     def <- rule
         [Def <$> fromTok
-            <@> var <#> pats <# Equals <#> expr]
-    defs <- severalInter SemiColon def
+            <@> var <#> pats0 <# Equals <#> expr]
+    -- Here we can use the Grempa function 'severalInter0' meaning 0 or more
+    -- 'def's interspersed with 'SemiColon's
+    defs <- severalInter0 SemiColon def
 
     pat <- rule
         [PCon <$> fromTok
@@ -47,11 +51,15 @@ lang = do
         ,id <@> apat
         ]
     apat <- rule
-        [paren pat
-        ,flip PCon [] . fromTok <@> con
+        [flip PCon [] . fromTok <@> con
         ,PVar . fromTok         <@> var
+        ,paren pat
         ]
-    pats <- several apat
+    -- @pats0@ means 0 or more @apat@s
+    pats0 <- several0 apat
+    -- This shows the usage of the 'cons' function, which simply creates a new
+    -- rule of @apat@ followed by @pats0@, combined with '(:)'.
+    pats  <- apat `cons` pats0
 
     expr <- rule
         [ECase <@  Case <#> expr <# Of <# LCurl <#> casebrs <# RCurl
@@ -73,15 +81,13 @@ lang = do
     expr3 <- rule
         [EVar . fromTok <@> var
         ,ENum . fromNum <@> num
+        ,ECon . fromTok <@> con
         ,paren expr
         ]
-    --expr3s  <- several expr3
 
     casebr  <- rule [Branch <@> pat <# RightArrow <#> expr]
-    casebrs <- severalInter SemiColon casebr
+    casebrs <- severalInter0 SemiColon casebr
 
   return defs
   where
     paren x = id <@ LParen <#> x <# RParen
-
-
