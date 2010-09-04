@@ -18,8 +18,16 @@ Copyright:           (c) 2010 Olle Fredriksson
 Stability:           Experimental
 Category:            Parsing
 Build-type:          Simple
-Extra-source-files:  README.lhs, READMEStatic.lhs examples/*.hs examples/Test.fs
-Cabal-version:       >= 1.2
+Extra-source-files:  README
+                   , examples/Ex1SimpleExpr.hs
+                   , examples/Ex1SimpleExprParser.hs
+                   , examples/Ex2Calculator.hs
+                   , examples/Ex2CalculatorParser.hs
+                   , examples/Ex3Fun.hs
+                   , examples/Ex3FunLex.hs
+                   , examples/Ex3FunParser.hs
+                   , examples/Ex4Test.hs
+Cabal-version:       >= 1.6
 Flag test
     Description:
       Build the module for generating random inputs and the expected output for

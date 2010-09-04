@@ -80,6 +80,9 @@ staticRT g = do
 --   The token type of the grammar must also be an instance of 'ToPat', and the
 --   result type an instance of 'Typeable' (the GHC extension
 --   DeriveDataTypeable may be useful for this).
+--
+--   If there are conflicts in the parsing tables, they will be displayed
+--   as warnings when compiling the parser.
 mkStaticParser :: (Typeable a, ToPat t, Token t, Lift t)
                => T.Grammar t a -- ^ The grammar
                -> ExpQ          -- ^ The Template Haskell representation of the

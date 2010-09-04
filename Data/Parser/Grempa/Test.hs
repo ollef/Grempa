@@ -5,6 +5,7 @@ module Data.Parser.Grempa.Test(prop_parser) where
 import Control.Applicative
 import qualified Control.Arrow as A
 import Data.Dynamic
+import Data.List
 import Data.Maybe
 import Test.QuickCheck
 
@@ -17,17 +18,18 @@ arb :: Typeable s => ProdFunFun -> RId s -> Int -> Gen ([s], Dynamic)
 arb fun rid n = arbR n fun (rIdRule rid, rId rid)
 
 arbR :: Typeable s => Int -> ProdFunFun -> (Rule s, RuleI) -> Gen ([s], Dynamic)
-arbR n fun (prods, r)
-  | n > 0     = arby $ index prods
-  | otherwise = do
-    let nonRecs = filter (not . isRec . fst3) $ index prods
-    if not $ null nonRecs
-        then arby nonRecs
-        else arby $ index prods
+arbR n fun (prods, r) = do
+    let (recs, nonRecs) = partition (isRec . fst3) $ index prods
+        recsf           = map (tup recf) recs
+        nonRecsf        = map (tup $ 10 * recf + 1) nonRecs
+        freqs           = map (A.second $ arbP (n - 1) fun) $ recsf ++ nonRecsf
+        minn            = if null nonRecs then 1 else 0
+        recf            = max n minn
+    frequency freqs
   where
     index xs     = zip3 xs [0..] $ repeat r
     fst3 (a,_,_) = a
-    arby xs      = (arbP n fun =<< elements xs) -- `suchThat` (not . null . fst)
+    tup a b      = (a, b)
 
 arbP :: Typeable s => Int -> ProdFunFun -> (Prod s, RuleI, ProdI) -> Gen ([s], Dynamic)
 arbP n fun (prod, p, r) = do
