@@ -1,7 +1,0 @@
---errormeddelanden för konflikter för dynamic?
-gör genereringen snabbare genom att förräkna massa saker?
---QuickCheck, typ klart?
---dokumentation
---errormeddelanden funkar inte helt för ex ("x=x=x")
---graph använder senaste graphviz? eller ta bort kanske
-deriving read
