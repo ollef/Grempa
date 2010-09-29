@@ -34,7 +34,6 @@ instance Show s => Show (Item s) where
                              "," ++ show po ++
                              "," ++ show la ++ ")\n"
 
-
 instance Token s => It Item s where
     itRId         = itemRId
     itProd        = itemProd
@@ -42,7 +41,6 @@ instance Token s => It Item s where
     setItPos i p  = i {itemPos = p}
     closure       = closureLR1
     startItem rid = Item rid 0 0 EOF
-
 
 -- | Determine what items may be valid productions from an item
 closureLR1 :: Token s => Set (Item s) -> Set (Item s)
@@ -78,26 +76,23 @@ type LookaheadTable s = MultiMap (Int, SLR.Item  (Maybe s))
 lookaheads :: Token s
            => Int
            -> Set (SLR.Item (Maybe s))
-           -> Set (SLR.Item (Maybe s))
            -> Symbol (Maybe s)
            -> Gen SLR.Item (Maybe s) (LookaheadTable s)
-lookaheads istate i k x = do
-    mjstate <- askItemSet (goto i x)
-    case mjstate of
-        Nothing -> return MM.empty
-        Just jstate -> do
+lookaheads istate k x = do
+    askGoto istate x >>=
+        maybe (return MM.empty) (\jstate -> do
             startSt  <- asks gStartState
             startRId <- asks gStartRule
             let startIt = startItem startRId
             return $ MM.insert (startSt, startIt) (Spont EOF)
                    $ MM.unions
                    $ map (MM.fromList . lookaheadsI jstate)
-                   $ S.toList k
+                   $ S.toList k)
   where
     lookaheadsI jstate a
-        = [case itemLA b /= Tok Nothing of
-               True  -> ((jstate, nextItPos $ fromLALR b), Spont $ itemLA b)
-               False -> ((jstate, nextItPos $ fromLALR b), PropFrom istate a)
+        = [if itemLA b /= Tok Nothing
+               then ((jstate, nextItPos $ fromLALR b), Spont $ itemLA b)
+               else ((jstate, nextItPos $ fromLALR b), PropFrom istate a)
           | b <- S.toList js
           , nextSymbol b == Tok x]
       where js  = closure $ S.singleton $ fromSLR a (Tok Nothing)
@@ -129,7 +124,8 @@ lalrItems = do
     iss <- asks gItemSets
     let kss  = map (A.first $ kernel st) iss
     syms <- asks gSymbols
-    las <- zipWithM (\(i,n) (k,_) -> MM.unions <$> mapM (lookaheads n i k) syms) iss kss
+    las <- zipWithM (\(_,n) (k,_) -> MM.unions
+                                 <$> mapM (lookaheads n k) syms) iss kss
     let tab = MM.unions las
     return
         [ let newi = [ evalDone $ toIts it <$> findLookaheads tab n it
@@ -145,7 +141,7 @@ slrGenToLalrGen g = let newits = runGen lalrItems g
                         newix  = M.fromList newits
                     in g { gItemSets     = newits
                          , gItemSetIndex = newix
-                         , gGotos        = preComputeGotos newits newix (gSymbols g)
+                         , gGotos        = precomputeGotos newits newix (gSymbols g)
                          }
 -- | Create LALR parsing tables from a starting rule of a grammar (augmented)
 lalr :: Token s => RId s -> (ActionTable s, GotoTable s, Int)
@@ -154,21 +150,16 @@ lalr g =
         initg      = slrGenToLalrGen initSlr
         cs         = gItemSets initg
         as         =        [runGen (actions i) initg | i <- cs]
-        gs         = concat [runGen (gotos   i) initg | i <- cs]
+        gs         = concat [runGen (gotos   i) initg | (_, i) <- cs]
     in (as, gs, gStartState initg)
 
 -- | Create goto table
 gotos :: Token s
-      => (Set (Item (Maybe s)), StateI)
-      -> Gen Item (Maybe s) [((StateI, RuleI), StateI)]
-gotos (items, i) = do
+      => StateI -> Gen Item (Maybe s) [((StateI, RuleI), StateI)]
+gotos i = do
     nt     <- asks gNonTerminals
-    map (A.first (i,)) <$> catMaybes <$> sequence
-        [do j <- askItemSet $ goto items a
-            return $ case j of
-                Nothing -> Nothing
-                Just x  -> Just (ai, x)
-          | a@(SRule (RId ai _)) <- nt]
+    catMaybes <$> sequence
+        [fmap ((i,ai),) <$> askGoto i a | a@(SRule (RId ai _)) <- nt]
 
 -- | Create action table
 actions :: Token s
@@ -177,17 +168,12 @@ actions :: Token s
 actions (items, i) = do
     start  <- asks gStartRule
     let actions' item@Item {itemRId = rid@(RId ri _)} = case nextSymbol item of
-            Tok a@(STerm (Just s)) -> do
-                j <- askItemSet $ goto items a
-                case j of
-                    Just x  -> return [(Tok s, Shift x)]
-                    Nothing -> return []
-            EOF
-                | rid /= start ->
-                    return
-                        [ ( fromJust <$> itemLA item
-                          , Reduce ri (itProd item)
-                                      (length $ getItProd item) [])]
+            Tok a@(STerm (Just s)) ->
+                maybe [] ((:[]) . (Tok s,) . Shift) <$> askGoto i a
+            EOF | rid /= start -> return
+                    [ ( fromJust <$> itemLA item
+                      , Reduce ri (itProd item)
+                                  (length $ getItProd item) [])]
                 | itemLA item == EOF -> return [(EOF, Accept)]
             _ -> return []
     tab <- concat <$> sequence

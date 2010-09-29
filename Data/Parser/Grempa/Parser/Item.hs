@@ -3,10 +3,11 @@ module Data.Parser.Grempa.Parser.Item
     ( It(..), getItProd, isKernelIt
     , kernel
     , nextSymbol
-    , goto
     , nextItPos
     , Gen, GenData(..), runGen, gen
     , askItemSet
+    , precomputeGotos
+    , askGoto
     ) where
 
 import Control.Applicative
@@ -38,6 +39,7 @@ isKernelIt :: It i s => RId s -> i s -> Bool
 isKernelIt st it = pos > 0 || (itRId it == st && pos == 0)
   where pos = getItPos it
 
+-- | Get the kernel of an item set
 kernel :: It i s => RId s -> Set (i s) -> Set (i s)
 kernel st = S.filter $ isKernelIt st
 
@@ -69,6 +71,7 @@ itemSets rid rids = S.delete S.empty $ recTraverseG itemSets' c1
     itemSets' c   = (c `S.union` gs, gs)
       where gs    = S.fromList [goto i x | i <- S.toList c, x <- symbols]
 
+-- | Data environment for parser generation
 data GenData i s = GenData
   { gItemSets     :: [(Set (i s), StateI)]
   , gItemSetIndex :: Map (Set (i s)) StateI
@@ -85,28 +88,38 @@ type Gen i s = Reader (GenData i s)
 runGen :: Gen i s a -> GenData i s -> a
 runGen = runReader
 
+-- | Create an initial parser generator data structure
 gen :: (It i s, Token s) => RId s -> GenData i s
-gen g = GenData is ix rs ts nt sys ss g gotos
-  where
-    is  = zip (S.toList $ itemSets g rs) [0..]
-    ix  = M.fromList is
-    rs  = rules g
-    ts  = terminals rs
-    nt  = nonTerminals rs
-    sys = ts ++ nt
-    ss  = snd $ fromMaybe (error "gen: maybe")
-              $ find (S.member (startItem g) . fst) is
-    gotos = precomputeGotos is ix sys
+gen g = GenData
+    { gItemSets     = items
+    , gItemSetIndex = itemIx
+    , gRules        = ruless
+    , gTerminals    = terms
+    , gNonTerminals = nonTerms
+    , gSymbols      = syms
+    , gStartState   = snd $ fromMaybe (error "gen: maybe")
+                    $ find (S.member (startItem g) . fst) items
+    , gStartRule    = g
+    , gGotos        = precomputeGotos items itemIx syms
+    }
+  where items    = zip (S.toList $ itemSets g ruless) [0..]
+        itemIx   = M.fromList items
+        ruless   = rules g
+        terms    = terminals ruless
+        nonTerms = nonTerminals ruless
+        syms     = terms ++ nonTerms
 
+-- | Calculate the goto function for all inputs and put it in a map
 precomputeGotos :: (It i s, Token s)
                 => [(Set (i s), StateI)] -> Map (Set (i s)) StateI -> [Symbol s]
                 -> Map (StateI, Symbol s) StateI
 precomputeGotos iss isi syms = M.fromList
         [((ii, sym), st) | (is, ii) <- iss
                          , sym      <- syms
-                         , Just st  <- findState $ goto is sym]
+                         , Just st <- [findState $ goto is sym]]
   where
     findState = lookupItemSet iss isi
+
 
 lookupItemSet :: (It i s, Token s)
               => [(Set (i s), StateI)] -> Map (Set (i s)) StateI
@@ -116,13 +129,15 @@ lookupItemSet iss isi x
     | S.null x  = Nothing
     | otherwise = case M.lookup x isi of
         Nothing -> snd <$> listToMaybe (filter (S.isSubsetOf x . fst) iss)
-        x       -> x
+        y       -> y
 
+-- | Get what item set index an item set corresponds to
 askItemSet :: (It i s, Token s) => Set (i s) -> Gen i s (Maybe StateI)
 askItemSet x = do
     iss <- asks gItemSets
     isi <- asks gItemSetIndex
     return $ lookupItemSet iss isi x
 
+-- | Lookup a precomputed goto value
 askGoto :: (It i s, Token s) => StateI -> Symbol s -> Gen i s (Maybe StateI)
 askGoto st sym = M.lookup (st, sym) <$> asks gGotos
