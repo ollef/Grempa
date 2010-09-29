@@ -78,6 +78,7 @@ data GenData i s = GenData
   , gSymbols      :: [Symbol s]
   , gStartState   :: Int
   , gStartRule    :: RId s
+  , gGotos        :: Map (StateI, Symbol s) StateI
   } deriving Show
 
 type Gen i s = Reader (GenData i s)
@@ -85,7 +86,7 @@ runGen :: Gen i s a -> GenData i s -> a
 runGen = runReader
 
 gen :: (It i s, Token s) => RId s -> GenData i s
-gen g = GenData is ix rs ts nt sys ss g
+gen g = GenData is ix rs ts nt sys ss g gotos
   where
     is  = zip (S.toList $ itemSets g rs) [0..]
     ix  = M.fromList is
@@ -95,14 +96,33 @@ gen g = GenData is ix rs ts nt sys ss g
     sys = ts ++ nt
     ss  = snd $ fromMaybe (error "gen: maybe")
               $ find (S.member (startItem g) . fst) is
+    gotos = precomputeGotos is ix sys
 
+precomputeGotos :: (It i s, Token s)
+                => [(Set (i s), StateI)] -> Map (Set (i s)) StateI -> [Symbol s]
+                -> Map (StateI, Symbol s) StateI
+precomputeGotos iss isi syms = M.fromList
+        [((ii, sym), st) | (is, ii) <- iss
+                         , sym      <- syms
+                         , Just st  <- findState $ goto is sym]
+  where
+    findState = lookupItemSet iss isi
+
+lookupItemSet :: (It i s, Token s)
+              => [(Set (i s), StateI)] -> Map (Set (i s)) StateI
+              -> Set (i s)
+              -> Maybe StateI
+lookupItemSet iss isi x
+    | S.null x  = Nothing
+    | otherwise = case M.lookup x isi of
+        Nothing -> snd <$> listToMaybe (filter (S.isSubsetOf x . fst) iss)
+        x       -> x
 
 askItemSet :: (It i s, Token s) => Set (i s) -> Gen i s (Maybe StateI)
-askItemSet x | x == S.empty = return Nothing
 askItemSet x = do
-    res <- M.lookup x <$> asks gItemSetIndex
-    case res of
-        Just r  -> return $ Just r
-        Nothing -> do
-            is <- asks gItemSets
-            return $ snd <$> listToMaybe (filter (S.isSubsetOf x . fst) is)
+    iss <- asks gItemSets
+    isi <- asks gItemSetIndex
+    return $ lookupItemSet iss isi x
+
+askGoto :: (It i s, Token s) => StateI -> Symbol s -> Gen i s (Maybe StateI)
+askGoto st sym = M.lookup (st, sym) <$> asks gGotos

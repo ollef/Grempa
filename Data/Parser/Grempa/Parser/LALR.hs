@@ -142,8 +142,10 @@ lalrItems = do
 
 slrGenToLalrGen :: Token s => GenData SLR.Item (Maybe s) -> GenData Item (Maybe s)
 slrGenToLalrGen g = let newits = runGen lalrItems g
+                        newix  = M.fromList newits
                     in g { gItemSets     = newits
-                         , gItemSetIndex = M.fromList newits
+                         , gItemSetIndex = newix
+                         , gGotos        = preComputeGotos newits newix (gSymbols g)
                          }
 -- | Create LALR parsing tables from a starting rule of a grammar (augmented)
 lalr :: Token s => RId s -> (ActionTable s, GotoTable s, Int)
