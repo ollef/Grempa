@@ -38,7 +38,7 @@ showConflict (st, confs)
     ++ "), between " ++ intercalate " and " (map go confs)
   where
     go cs = "[" ++ intercalate "," (map go' cs) ++ "]"
-    go' (t, a) = "On token " ++ show (unTok t) ++ " " ++ showAction a
+    go' (t, a) = "On token " ++ tokToString t ++ " " ++ showAction a
     showAction (Shift s)       = "shift state " ++ show s
     showAction (Reduce r p _ _) = "reduce (rule " ++ show r ++ ", production " ++ show p ++ ")"
     showAction Accept           = "accept"

@@ -14,6 +14,8 @@ import Data.Map(Map)
 import Data.Set(Set)
 import qualified Data.Set as S
 
+import Debug.Trace
+
 import Data.Parser.Grempa.Aux.Aux
 import Data.Parser.Grempa.Parser.Table
 import Data.Parser.Grempa.Grammar.Token
@@ -106,6 +108,41 @@ nonTerminals = map SRule
 -- | Get the first tokens that a symbol eats
 first :: Token s => Symbol s -> Set (ETok s)
 first = evalDone . first'
+
+data RecETok s
+    = RecETok (ETok s)
+    | IfEpsilon (RId s) (Prod s)
+    | Rule (RId s)
+  deriving (Eq, Ord)
+
+{-
+type First a = State (MultiMap (RId s) (RecETok s)) a
+
+first' :: Token s => Symbol s -> First (Set (ETok s))
+first' (STerm s) = 
+
+firstProd :: Token s => Prod s -> Set (ETok s)
+firstProd as =
+  where
+    go :: RId s -> Prod s -> First ()
+    go rid []                = modify (MM.insert rid (RecETok Epsilon))
+    go rid (s@(STerm _):as)  = modify (MM.insert rid (RecETok (ETok s)))
+    go rid (SRule rid'@(RId _ ps):as)   = do
+        ss <- gets (MM.lookup rid')
+        when (S.empty ss) (mapM_ (go rid') ps)
+        ss' <- gets (MM.lookup rid')
+        if S.member (RecETok Epsilon) ss'
+           then do
+               modify (MM.insert rid (delete (RecETok Epsilon) ss'))
+               go rid as
+           else modify (MM.insert rid (IfEpsilon rid' as))
+
+
+firstProd' :: Token s => Prod s -> RecETok s
+firstProd' []             = Epsilon
+firstProd' (STerm s:as)   = RecETok s
+firstProd' (SRule rid:as) = RecRule rid as
+-}
 
 --first' :: Token s => Symbol s -> Done (RId s) () (Set (ETok s))
 first' :: Token s => Symbol s -> DoneA (RId s) (Set (ETok s))
