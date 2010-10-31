@@ -3,7 +3,7 @@ module Data.Parser.Grempa.Grammar.Untyped
     ( Rule, Prod, Symbol(..), RId(..)
     , unType
     , rules, terminals, nonTerminals
-    , first, firstProd, follow
+    , firstProd, follow
     )where
 
 import qualified Control.Arrow as A
@@ -14,9 +14,9 @@ import Data.Map(Map)
 import Data.Set(Set)
 import qualified Data.Set as S
 
-import Debug.Trace
-
 import Data.Parser.Grempa.Aux.Aux
+import qualified Data.Parser.Grempa.Aux.MultiMap as MM
+import Data.Parser.Grempa.Aux.MultiMap(MultiMap)
 import Data.Parser.Grempa.Parser.Table
 import Data.Parser.Grempa.Grammar.Token
 import qualified Data.Parser.Grempa.Grammar.Typed as T
@@ -105,67 +105,71 @@ terminals = concatMap (\(RId _ rs) -> [STerm s | as <- rs, STerm s <- as])
 nonTerminals :: Token s => [RId s] -> [Symbol s]
 nonTerminals = map SRule
 
--- | Get the first tokens that a symbol eats
-first :: Token s => Symbol s -> Set (ETok s)
-first = evalDone . first'
-
+-- | Datatype used in computing the first set
 data RecETok s
-    = RecETok (ETok s)
+    = RETok {unRETok :: ETok s}
     | IfEpsilon (RId s) (Prod s)
-    | Rule (RId s)
+    | RRule (RId s)
   deriving (Eq, Ord)
 
-{-
-type First a = State (MultiMap (RId s) (RecETok s)) a
+type First s a = State (MultiMap (RId s) (RecETok s)) a
 
-first' :: Token s => Symbol s -> First (Set (ETok s))
-first' (STerm s) = 
+-- | Get the first tokens that a symbol eats
+-- first :: Token s => Symbol s -> Set (ETok s)
+-- first s = firstProd [s]
 
 firstProd :: Token s => Prod s -> Set (ETok s)
-firstProd as =
+firstProd = flip evalState MM.empty . firstProd'
+
+firstProd' :: Token s => Prod s -> First s (Set (ETok s))
+firstProd' as = do
+    go (RId (-1) undefined) as
+    fixf
+    results <$> gets (MM.lookup (RId (-1) undefined))
   where
-    go :: RId s -> Prod s -> First ()
-    go rid []                = modify (MM.insert rid (RecETok Epsilon))
-    go rid (s@(STerm _):as)  = modify (MM.insert rid (RecETok (ETok s)))
-    go rid (SRule rid'@(RId _ ps):as)   = do
+    go :: Token s => RId s -> Prod s -> First s ()
+    go rid []          = modify $ MM.insert rid (RETok Epsilon)
+    go rid (STerm s:_) = modify $ MM.insert rid (RETok (ETok s))
+    go rid (SRule rid'@(RId _ ps):xs) = do
+        modify $ MM.insert rid (RRule rid')
+        ss <- gets $ MM.lookup rid'
+        when (S.null ss) $ mapM_ (go rid') ps
+        modify $ MM.insert rid (IfEpsilon rid' xs)
+
+    f :: Token s => RId s -> RecETok s -> First s ()
+    f rid rt@(IfEpsilon rid' xs) = do
+        ss  <- gets (MM.lookup rid')
+        when (S.member (RETok Epsilon) ss) $ do
+            modify $ MM.delete rid rt
+            go rid xs
+    f rid rt@(RRule rid') = do
         ss <- gets (MM.lookup rid')
-        when (S.empty ss) (mapM_ (go rid') ps)
-        ss' <- gets (MM.lookup rid')
-        if S.member (RecETok Epsilon) ss'
-           then do
-               modify (MM.insert rid (delete (RecETok Epsilon) ss'))
-               go rid as
-           else modify (MM.insert rid (IfEpsilon rid' as))
+        when (clean ss) $ do
+            modify $ MM.delete  rid rt
+            modify $ MM.inserts rid ss
+    f _ _ = return ()
 
+    clean :: Set (RecETok s) -> Bool
+    clean = S.fold ((&&) . isRETok) True
 
-firstProd' :: Token s => Prod s -> RecETok s
-firstProd' []             = Epsilon
-firstProd' (STerm s:as)   = RecETok s
-firstProd' (SRule rid:as) = RecRule rid as
--}
+    isRETok :: RecETok s -> Bool
+    isRETok (RETok _) = True
+    isRETok _         = False
 
---first' :: Token s => Symbol s -> Done (RId s) () (Set (ETok s))
-first' :: Token s => Symbol s -> DoneA (RId s) (Set (ETok s))
-first' (STerm s)             = return $ S.singleton (ETok s)
-first' (SRule rid@(RId _ r)) = ifNotDone rid $ do
-  rec
-    putDone rid $ case Epsilon `S.member` res of
-        True  -> S.singleton Epsilon
-        False -> S.empty
-    res <- S.unions <$> mapM firstProd' r
-  return res
+    fs :: Token s => First s ()
+    fs = do
+        ss <- get
+        sequence_ [f rid rt | (rid, rts) <- MM.toList ss, rt <- S.toList rts]
 
--- | Get the first tokens of a production
-firstProd :: Token s => Prod s -> Set (ETok s)
-firstProd = evalDone . firstProd'
+    results :: Token s => Set (RecETok s) -> Set (ETok s)
+    results = S.map unRETok . S.filter isRETok
 
-firstProd' :: Token s => Prod s -> DoneA (RId s) (Set (ETok s))
-firstProd' []     = return $ S.singleton Epsilon
-firstProd' (x:xs) = do
-    fx <- first' x
-    case Epsilon `S.member` fx of
-        True  -> S.union (S.delete Epsilon fx) <$> firstProd' xs
-        False -> return fx
+    fixf :: Token s => First s ()
+    fixf = do
+        state <- get
+        fs
+        state' <- get
+        when (state /= state') fixf
 
 -- | Get all symbols that can follow a rule,
 --   also given the start rule and a list of all rules
@@ -183,9 +187,11 @@ follow' rid startrid rids = ifNotDoneG rid (const S.empty) $ do
   where
     followProd []       _ = return S.empty
     followProd (b:beta) a
-        | b == SRule rid = case Epsilon `S.member` firstbeta of
-            True  -> (rest `S.union`) <$> follow' a startrid rids
-            False -> return rest
+        | b == SRule rid =  S.union rest
+                        <$> liftM2 S.union (followProd beta a)
+                                           (if Epsilon `S.member` firstbeta
+                                               then follow' a startrid rids
+                                               else return S.empty)
         | otherwise      = followProd beta a
       where
         firstbeta = firstProd beta

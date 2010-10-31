@@ -1,5 +1,5 @@
 {-# LANGUAGE StandaloneDeriving, GeneralizedNewtypeDeriving, DeriveDataTypeable, DoRec #-}
-module Ex4State (fun, Expr, St, evalSt) where
+module Ex4StateA (state, Expr, St, evalSt) where
 
 import Control.Applicative
 import Control.Monad.State
@@ -25,8 +25,8 @@ deriving instance Typeable1 St
 evalSt = flip evalState [] . unSt
 
 -- | Grammar for the language
-fun :: Grammar Tok (St Expr)
-fun = do
+state :: Grammar Tok (St Expr)
+state = do
   rec
     var   <- rule [ fromTok <@> Var ""]
     term1 <- rule [ mkLam   <@ Lambda <#> var <# RightArrow <#> term1

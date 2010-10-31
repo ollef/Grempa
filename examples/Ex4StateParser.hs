@@ -6,16 +6,16 @@ import Data.Parser.Grempa.Dynamic
 import Control.Monad.State
 
 -- Import the grammar.
-import Ex4State
+import Ex4StateB
 -- We also need the token datatype in scope or Template Haskell will complain.
 import Ex4StateLex
 
-parseStateStatic :: Parser Tok (St Expr)
-parseStateStatic = $(mkStaticParser fun [|fun|])
+parseStateStatic :: Parser Tok Expr
+parseStateStatic = $(mkStaticParser state [|state|])
 
 -- | Combine the lexer with a parser
 lexAndParse :: String -> Expr
-lexAndParse = evalSt . parse parseStateStatic . lexToks
+lexAndParse = parse parseStateStatic . lexToks
 
 -- | Try it out!
 test :: [Expr]

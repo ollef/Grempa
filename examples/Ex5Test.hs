@@ -21,6 +21,6 @@ import Ex3FunParser(parseFunStatic)
 --   defined language (you should get conflicts if it does not, but it feels
 --   good to get an assurance).
 testEx1, testEx2, testEx3 :: Property
-testEx1 = prop_parser parseExprStatic expr
-testEx2 = prop_parser parseCalcStatic calc
-testEx3 = prop_parser parseFunStatic  fun
+testEx1 = prop_parser parseExprStatic  expr
+testEx2 = prop_parser parseCalcStatic  calc
+testEx3 = prop_parser parseFunStatic   fun
