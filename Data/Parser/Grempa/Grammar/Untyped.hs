@@ -145,8 +145,8 @@ firstProd' as = do
     f rid rt@(RRule rid') = do
         ss <- gets (MM.lookup rid')
         when (clean ss) $ do
-            modify $ MM.delete  rid rt
-            modify $ MM.inserts rid ss
+            modify $ MM.delete rid rt
+        modify $ MM.inserts rid (S.filter isRETok ss)
     f _ _ = return ()
 
     clean :: Set (RecETok s) -> Bool
