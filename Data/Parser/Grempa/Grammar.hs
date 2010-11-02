@@ -38,11 +38,14 @@
 {-# LANGUAGE DoRec, TypeFamilies #-}
 module Data.Parser.Grempa.Grammar
     ( module Data.Parser.Grempa.Grammar.Typed
+    , module Data.Parser.Grempa.Grammar.Levels
     , several0, several, severalInter0, severalInter, cons
     ) where
+
 import Data.Typeable
 import Data.Parser.Grempa.Grammar.Typed
     (Grammar, rule, ToSym(..), (<#>), (<#), (<@>), (<@), epsilon)
+import Data.Parser.Grempa.Grammar.Levels
 
 -- | Create a new rule which consists of 0 or more of the argument symbol.
 --   Example: @several0 x@ matches @x x ... x@

@@ -2,7 +2,7 @@
 {-# OPTIONS_HADDOCK hide #-}
 module Data.Parser.Grempa.Grammar.Typed
     ( Grammar
-    , Prod(..), Symbol(..), RId(..)
+    , Rule, Prod(..), Symbol(..), RId(..)
     , GrammarState
     , rule
     , evalGrammar
