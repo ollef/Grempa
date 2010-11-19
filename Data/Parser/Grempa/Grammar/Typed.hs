@@ -47,7 +47,7 @@ data RId s a where
 
 -- The grammar monad giving a unique RuleI to each new rule
 newtype RuleIDs t = RuleIDs { rules :: [RuleI] }
-type GrammarState t a = State (RuleIDs t) a
+type GrammarState t = State (RuleIDs t)
 type Grammar t a = GrammarState t (RId t a)
 
 -- | Get the result from a Grammar computation

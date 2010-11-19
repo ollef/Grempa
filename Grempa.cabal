@@ -45,6 +45,7 @@ Library
                    , Data.Parser.Grempa.Dynamic
     Other-modules:   Data.Parser.Grempa.Aux.Aux
                    , Data.Parser.Grempa.Aux.MultiMap
+                   , Data.Parser.Grempa.Grammar.Levels
                    , Data.Parser.Grempa.Grammar.Token
                    , Data.Parser.Grempa.Grammar.Typed
                    , Data.Parser.Grempa.Grammar.Untyped

@@ -4,54 +4,46 @@ module Data.Parser.Grempa.Grammar.Levels
     , lrule
     ) where
 
-import Control.Applicative
+import Control.Monad.State
 import Control.Monad.Trans
 import Control.Monad.Fix
 import Data.Typeable
 
 import Data.Parser.Grempa.Grammar.Typed
 
-newtype RStateT s m a = RStateT { runRStateT :: s -> m (a, s) }
 
-instance MonadFix m => Monad (RStateT s m) where
-    return x = RStateT $ return . (,) x
-    RStateT p >>= f = RStateT $ \s0 -> do
-      rec
-        (x, s2) <- p s1
-        (y, s1) <- runRStateT (f x) s0
-      return (y, s2)
+newtype ReverseT m a = ReverseT { runReverseT :: m a }
 
-instance MonadTrans (RStateT s) where
-    lift x = RStateT $ \s -> do
-        r <- x
-        return (r, s)
+instance MonadFix m => Monad (ReverseT m) where
+    return            = ReverseT . return
+    ReverseT m >>= f  =
+         ReverseT $ do
+           rec
+             b <- runReverseT (f a)
+             a <- m
+           return b
 
-instance MonadFix m => MonadFix (RStateT s m) where
-    mfix f = RStateT $ \s2 -> do
-      rec
-        (x, s0) <- runRStateT (f y) s1
-        (y, s1) <- runRStateT (f x) s2
-      return (x, s0)
+instance MonadTrans ReverseT where
+    lift = ReverseT
 
-get :: Monad m => RStateT s m s
-get = RStateT $ \s -> return (s, s)
+instance MonadFix m => MonadFix (ReverseT m) where
+    mfix f = ReverseT $ mfix (runReverseT . f)
 
-put :: Monad m => s -> RStateT s m ()
-put s = RStateT $ const $ return ((), s)
-
-type Levels s r m a = RStateT (Maybe (RId s r)) m a
+type RStateT s m a = ReverseT (StateT s m) a
 
 levels :: Monad m => RStateT (Maybe a) m r -> m r
-levels l = do
-    (a, s) <- runRStateT l Nothing
-    return a
+levels = flip evalStateT Nothing . runReverseT
 
+
+lrule :: (Typeable a, Typeable t)
+      => Rule t a
+      -> RStateT (Maybe (RId t a)) (GrammarState t) (RId t a)
 lrule r = do
   rec
-    rid <- lift $ rule $ case mnext of
+    lift $ put (Just rid)
+    rid <- lift $ lift $ rule $ case mnext of
         Just next -> (id <@> next) : r
         Nothing   -> r
-    put (Just rid)
-    mnext <- get
+    mnext <- lift get
   return rid
 
