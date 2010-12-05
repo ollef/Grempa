@@ -39,10 +39,10 @@ Flag test
       Default: False
 Library
     Build-depends:   array            == 0.3.*
-                   , base             == 4.3.*
-                   , containers       == 0.4.*
+                   , base             == 4.2.*
+                   , containers       == 0.3.*
                    , monads-fd        == 0.2.*
-                   , template-haskell == 2.5.*
+                   , template-haskell == 2.4.*
                    , th-lift          == 0.5.*
     Exposed-modules: Data.Parser.Grempa.Grammar
                    , Data.Parser.Grempa.Static
