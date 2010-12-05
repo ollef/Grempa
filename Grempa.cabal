@@ -1,5 +1,5 @@
 Name:                Grempa
-Version:             0.1.0
+Version:             0.1.1
 Synopsis:            Embedded grammar DSL and LALR parser generator
 Description:
     A library for expressing programming language grammars in a form similar
@@ -26,7 +26,11 @@ Extra-source-files:  README
                    , examples/Ex3Fun.hs
                    , examples/Ex3FunLex.hs
                    , examples/Ex3FunParser.hs
-                   , examples/Ex4Test.hs
+                   , examples/Ex4StateA.hs
+                   , examples/Ex4StateB.hs
+                   , examples/Ex4StateLex.hs
+                   , examples/Ex4StateParser.hs
+                   , examples/Ex5Test.hs
 Cabal-version:       >= 1.6
 Flag test
     Description:
@@ -35,10 +39,10 @@ Flag test
       Default: False
 Library
     Build-depends:   array            == 0.3.*
-                   , base             == 4.2.*
-                   , containers       == 0.3.*
-                   , monads-fd        == 0.1.*
-                   , template-haskell == 2.4.*
+                   , base             == 4.3.*
+                   , containers       == 0.4.*
+                   , monads-fd        == 0.2.*
+                   , template-haskell == 2.5.*
                    , th-lift          == 0.5.*
     Exposed-modules: Data.Parser.Grempa.Grammar
                    , Data.Parser.Grempa.Static
@@ -60,5 +64,5 @@ Library
                    , Data.Parser.Grempa.Parser.Table
     GHC-Options:   -Wall
     if flag(test)
-      Build-Depends:   QuickCheck == 2.2.*
+      Build-Depends:   QuickCheck == 2.4.*
       Exposed-modules: Data.Parser.Grempa.Test

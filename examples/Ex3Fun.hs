@@ -61,29 +61,29 @@ fun = do
     -- rule of @apat@ followed by @pats0@, combined with '(:)'.
     pats  <- apat `cons` pats0
 
-    expr <- rule
-        [ECase <@  Case <#> expr <# Of <# LCurl <#> casebrs <# RCurl
-        ,ELet  <@  Let  <#> def <# In <#> expr
-        ,id    <@> expr1
-        ]
-    expr1 <- rule
-        -- All binary operators are parsed as being left-associative
-        -- A post-processor could be used to change this when fixities
-        -- and precedence levels of all operators are are known
-        [flip (flip EOp . fromTok)
-               <@> expr1 <#> op <#> expr2
-        ,id    <@> expr2
-        ]
-    expr2 <- rule
-        [EApp  <@> expr2 <#> expr3
-        ,id    <@> expr3
-        ]
-    expr3 <- rule
-        [EVar . fromTok <@> var
-        ,ENum . fromNum <@> num
-        ,ECon . fromTok <@> con
-        ,paren expr
-        ]
+    expr <- levels $ do
+      rec
+        expr <- lrule
+            [ECase <@  Case <#> expr <# Of <# LCurl <#> casebrs <# RCurl
+            ,ELet  <@  Let  <#> def <# In <#> expr
+            ]
+        expr1 <- lrule
+            -- All binary operators are parsed as being left-associative
+            -- A post-processor could be used to change this when fixities
+            -- and precedence levels of all operators are are known
+            [flip (flip EOp . fromTok)
+                   <@> expr1 <#> op <#> expr2
+            ]
+        expr2 <- lrule
+            [EApp  <@> expr2 <#> expr3
+            ]
+        expr3 <- lrule
+            [EVar . fromTok <@> var
+            ,ENum . fromNum <@> num
+            ,ECon . fromTok <@> con
+            ,paren expr
+            ]
+      return expr
 
     casebr  <- rule [Branch <@> pat <# RightArrow <#> expr]
     casebrs <- severalInter0 SemiColon casebr

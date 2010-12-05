@@ -1,8 +1,8 @@
-{-# LANGUAGE StandaloneDeriving, GeneralizedNewtypeDeriving, DeriveDataTypeable, DoRec #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving, DeriveDataTypeable, DoRec #-}
 module Ex4StateB (state, Expr, St, evalSt) where
 
 import Control.Applicative
-import Control.Monad.State
+import Control.Monad.Reader
 import Data.Data
 import Data.List
 import Data.Maybe
@@ -18,42 +18,41 @@ data Expr
     | ELam Expr
   deriving (Eq, Show, Typeable)
 
-newtype St a = St { unSt :: State [String] a }
-  deriving (Applicative, Functor, Monad, MonadState [String])
-deriving instance Typeable1 St
+-- | The parsing state is just a wrapper around the Reader monad to make it
+--   possible to derive Typeable which is needed. We could also use a State
+--   monad but that is not necessary in this example.
+newtype St a = St { unSt :: Reader [String] a }
+  deriving (Typeable, Applicative, Functor, Monad, MonadReader [String])
 
-evalSt = flip evalState [] . unSt
+evalSt = flip runReader [] . unSt
 
 -- | Grammar for the language
 state :: Grammar Tok Expr
 state = do
   rec
     var   <- rule [ fromTok <@> Var ""]
-    term1 <- rule [ mkLam   <@ Lambda <#> var <# RightArrow <#> term1
-                  , id      <@> term2
-                  ]
-    term2  <- rule [ mkApp  <@> term2 <#> term3
-                   , id     <@> term3
-                   ]
-    term3 <- rule [ mkVar   <@> var
-                  , id      <@ LParen <#> term1 <# RParen
-                  ]
-    term <- rule  [ evalSt <@> term1 ]
+    term1 <- levels $ do
+      rec
+        -- Now the rules return 'St' computations instead of their data result.
+        t1 <- lrule [ mkLam <@  Lambda <#> var <# RightArrow <#> t1 ]
+        t2 <- lrule [ mkApp <@> t2  <#> t3 ]
+        t3 <- lrule [ mkVar <@> var
+                    , id    <@  LParen <#> t1 <# RParen
+                    ]
+      return t1
+      -- Here we evaluate the final 'St' computation to get the result.
+    term <- rule [ evalSt <@> term1 ]
   return term
   where
     mkLam :: String -> St Expr -> St Expr
-    mkLam v e = do
-      modify (v :)
-      r <- e
-      modify tail
-      return $ ELam r
+    mkLam v e = ELam <$> local (v :) e
 
     mkApp :: St Expr -> St Expr -> St Expr
     mkApp a b = EApp <$> a <*> b
 
     mkVar :: String -> St Expr
     mkVar v = do
-      vars <- get
+      vars <- ask
       return $ EVar
              $ snd
              $ fromMaybe undefined

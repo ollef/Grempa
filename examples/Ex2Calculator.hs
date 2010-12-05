@@ -55,17 +55,15 @@ calc :: Grammar CToken Integer
 -- This is very similar to the definition of the previous example, but using
 -- operators operating on 'Integer's instead of constructors for the semantic
 -- actions.
-calc = do
+-- Here we are using 'levels' and 'lrule's which means that the rules will
+-- be linked together automatically with identity rules.
+calc = levels $ do
   rec
-    e  <- rule [ (+)   <@> e <# Plus  <#> t
-               , id    <@> t
-               ]
-    t  <- rule [ (*)   <@> t <# Times <#> f
-               , id    <@> f
-               ]
-    f  <- rule [ id    <@  LParen <#> e <# RParen
-               , unNum <@> num
-               ]
+    e  <- lrule [ (+)   <@> e <# Plus  <#> t ]
+    t  <- lrule [ (*)   <@> t <# Times <#> f ]
+    f  <- lrule [ id    <@  LParen <#> e <# RParen
+                , unNum <@> num
+                ]
   return e
   where
     -- We are using the fact that the parser will be able to only look at the

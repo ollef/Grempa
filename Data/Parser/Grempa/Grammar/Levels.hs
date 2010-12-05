@@ -11,7 +11,6 @@ import Data.Typeable
 
 import Data.Parser.Grempa.Grammar.Typed
 
-
 newtype ReverseT m a = ReverseT { runReverseT :: m a }
 
 instance MonadFix m => Monad (ReverseT m) where
@@ -33,7 +32,6 @@ type RStateT s m a = ReverseT (StateT s m) a
 
 levels :: Monad m => RStateT (Maybe a) m r -> m r
 levels = flip evalStateT Nothing . runReverseT
-
 
 lrule :: (Typeable a, Typeable t)
       => Rule t a
