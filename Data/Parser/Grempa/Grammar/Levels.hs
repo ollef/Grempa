@@ -30,9 +30,39 @@ instance MonadFix m => MonadFix (ReverseT m) where
 
 type RStateT s m a = ReverseT (StateT s m) a
 
-levels :: Monad m => RStateT (Maybe a) m r -> m r
+-- | Start a levels block. Usage:
+--
+-- @
+-- expr <- levels $ do
+--  rec
+--    e <- lrule [ Plus  <@> e <# '+' <#> t ]
+--    t <- lrule [ Times <@> t <# '*' <#> f ]
+--    f <- lrule [ Var   <@ 'x'
+--               , id    <@ '(' <#> e <# ')']
+--  return e
+-- @
+--
+-- is equivalent to
+--
+-- @
+--  e <- rule [ Plus  <@> e <# '+' <#> t 
+--            , id    <@> t
+--            ]
+--  t <- rule [ Times <@> t <# '*' <#> f 
+--            , id    <@> f
+--            ]
+--  f <- rule [ Var   <@ 'x'
+--            , id    <@ '(' <#> e <# ')'
+--            ]
+-- @
+--
+-- Put simply, every lrule save for the last one gets an additional identity
+-- production pointing to the next lrule. This is a common pattern when
+-- creating grammars with precedence levels.
+Monad m => RStateT (Maybe a) m r -> m r
 levels = flip evalStateT Nothing . runReverseT
 
+-- | A rule in a levels block
 lrule :: (Typeable a, Typeable t)
       => Rule t a
       -> RStateT (Maybe (RId t a)) (GrammarState t) (RId t a)
