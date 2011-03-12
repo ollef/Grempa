@@ -166,10 +166,10 @@ firstProd' as = do
 
     fixf :: Token s => First s ()
     fixf = do
-        state <- get
+        stat <- get
         fs
-        state' <- get
-        when (state /= state') fixf
+        stat' <- get
+        when (stat /= stat') fixf
 
 -- | Get all symbols that can follow a rule,
 --   also given the start rule and a list of all rules

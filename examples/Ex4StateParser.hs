@@ -3,7 +3,7 @@ module Ex4StateParser where
 
 import Data.Parser.Grempa.Static
 import Data.Parser.Grempa.Dynamic
-import Control.Monad.State
+import Control.Monad.State hiding (state)
 
 -- Import the grammar.
 import Ex4StateB

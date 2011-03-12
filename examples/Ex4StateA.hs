@@ -2,7 +2,7 @@
 module Ex4StateA (state, Expr, St, evalSt) where
 
 import Control.Applicative
-import Control.Monad.State
+import Control.Monad.State hiding (state)
 import Data.Data
 import Data.List
 import Data.Maybe

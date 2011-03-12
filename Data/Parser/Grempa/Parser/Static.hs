@@ -49,7 +49,7 @@ mkGotoFun tab = do
     lamE [varP st, varP r]
         $ caseE (tupE [varE st, varE r])
             $ map mkMatch tab
-            ++ [match wildP (normalB [|-1|]) []] -- Hacky (unknown goto is -1)
+            ++ [match wildP (normalB [|-1 :: Int|]) []] -- Hacky (unknown goto is -1)
   where
     mkMatch (k, v) =
         match (toPat k) (normalB [|v|]) []
