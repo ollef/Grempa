@@ -62,13 +62,13 @@ several0 x = do
 -- | Return a new rule which consists of 1 or more of the argument symbol.
 --   Example: @several x@ matches @x x ... x@
 --
---   Creates two new rules.
+--   Creates one new rule.
 several :: (ToSym s x, ToSymT s x ~ a, Typeable a, Typeable s)
         => x -> Grammar s [a]
 several x = do
     rec
-      xs0 <- several0 x
-      xs  <- x `cons` xs0
+      xs <- rule [(:[]) <@> x
+                 ,(:)   <@> x <#> xs ]
     return xs
 
 -- | Create a new rule which consists of a list of size 0 or more interspersed
@@ -76,32 +76,32 @@ several x = do
 --   Example: @severalInter0 ';' x@ matches @x ';' x ';' ... ';' x@
 --   If @x :: a@ then the result is of type @[a]@.
 --
---   Creates one new rule.
+--   Creates two new rules.
 severalInter0 :: ( ToSym s x, ToSymT s x ~ a
                  , ToSym s t, ToSymT s t ~ s
                  , Typeable a, Typeable s)
              => t -> x -> Grammar s [a]
 severalInter0 tok x = do
   rec
-    xs <- rule [epsilon []
-               ,(:[]) <@> x
-               ,(:)   <@> x <# tok <#> xs]
-  return xs
+    xs  <- rule [(:[]) <@> x
+                ,(:)   <@> x <# tok <#> xs]
+    res <- rule [epsilon []
+                ,id <@> xs]
+  return res
 
 -- | Return a new rule which consists of a list of size 1 or more interspersed
 --   with a symbol.
 --   Example: @severalInter ';' x@ matches @x ';' x ';' ... ';' x@
 --
---   Creates two new rules.
+--   Creates one new rule.
 severalInter :: ( ToSym s x, ToSymT s x ~ a
                 , ToSym s t, ToSymT s t ~ s
                 , Typeable a, Typeable s)
              => t -> x -> Grammar s [a]
 severalInter tok x = do
   rec
-    xs0 <- severalInter0 tok x
-    --xs  <- (x <# tok) `cons` xs0
-    xs  <- rule [(:) <@> x <# tok <#> xs0]
+    xs <- rule [ (:[]) <@> x
+               , (:)   <@> x <# tok <#> xs]
   return xs
 
 -- | Takes two symbols and combines them with @(:)@.
