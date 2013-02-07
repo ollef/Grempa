@@ -2,7 +2,7 @@
 --              correct precedence levels.
 
 -- Needed for recursive do notation.
-{-# LANGUAGE DoRec #-}
+{-# LANGUAGE RecursiveDo #-}
 -- Needed for deriving 'Typeable'.
 {-# LANGUAGE DeriveDataTypeable #-}
 

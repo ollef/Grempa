@@ -1,4 +1,4 @@
-{-# LANGUAGE StandaloneDeriving, GeneralizedNewtypeDeriving, DeriveDataTypeable, DoRec #-}
+{-# LANGUAGE StandaloneDeriving, GeneralizedNewtypeDeriving, DeriveDataTypeable, RecursiveDo #-}
 module Ex4StateA (state, Expr, St, evalSt) where
 
 import Control.Applicative

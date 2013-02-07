@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, DoRec #-}
+{-# LANGUAGE GADTs, RecursiveDo #-}
 module Data.Parser.Grempa.Grammar.Untyped
     ( Rule, Prod, Symbol(..), RId(..)
     , unType

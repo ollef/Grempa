@@ -35,7 +35,7 @@
     Grammars can be recursively defined by using recursive do-notation.
 -}
 
-{-# LANGUAGE DoRec, TypeFamilies #-}
+{-# LANGUAGE RecursiveDo, TypeFamilies #-}
 module Data.Parser.Grempa.Grammar
     ( module Data.Parser.Grempa.Grammar.Typed
     , module Data.Parser.Grempa.Grammar.Levels

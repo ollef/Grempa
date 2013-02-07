@@ -1,4 +1,4 @@
-{-# LANGUAGE GADTs, DoRec, DeriveDataTypeable, TypeFamilies, FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE GADTs, RecursiveDo, DeriveDataTypeable, TypeFamilies, FlexibleInstances, MultiParamTypeClasses #-}
 {-# OPTIONS_HADDOCK hide #-}
 module Data.Parser.Grempa.Grammar.Typed
     ( Grammar

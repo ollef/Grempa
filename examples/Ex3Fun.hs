@@ -1,6 +1,6 @@
 -- | Example 3: A grammar for a small functional language.
 --              This example also includes a naive lexer.
-{-# LANGUAGE DeriveDataTypeable, DoRec #-}
+{-# LANGUAGE DeriveDataTypeable, RecursiveDo #-}
 module Ex3Fun (fun, Def) where
 
 import Control.Applicative

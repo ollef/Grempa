@@ -6,7 +6,7 @@
 --              parser.
 
 -- Needed for recursive do notation.
-{-# LANGUAGE DoRec #-}
+{-# LANGUAGE RecursiveDo #-}
 -- Needed for deriving 'Typeable'.
 {-# LANGUAGE DeriveDataTypeable #-}
 -- Needed for deriving 'Lift'.

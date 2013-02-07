@@ -1,4 +1,4 @@
-{-# LANGUAGE StandaloneDeriving, GeneralizedNewtypeDeriving, DeriveDataTypeable, DoRec #-}
+{-# LANGUAGE StandaloneDeriving, GeneralizedNewtypeDeriving, DeriveDataTypeable, RecursiveDo #-}
 module NonTerminatingEx4 (state, Expr, St, evalSt) where
 
 import Control.Applicative
