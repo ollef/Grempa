@@ -39,7 +39,7 @@ Flag test
       Default: False
 Library
     Build-depends:   array            >= 0.3
-                   , base             >= 4.2
+                   , base             >= 4.2 && < 5
                    , containers       >= 0.3
                    , mtl              >= 2
                    , template-haskell >= 2.4
