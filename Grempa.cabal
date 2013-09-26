@@ -1,5 +1,5 @@
 Name:                Grempa
-Version:             0.2.2
+Version:             0.2.3
 Synopsis:            Embedded grammar DSL and LALR parser generator
 Description:
     A library for expressing programming language grammars in a form similar
@@ -47,8 +47,8 @@ Library
     Exposed-modules: Data.Parser.Grempa.Grammar
                    , Data.Parser.Grempa.Static
                    , Data.Parser.Grempa.Dynamic
-    Other-modules:   Data.Parser.Grempa.Aux.Aux
-                   , Data.Parser.Grempa.Aux.MultiMap
+    Other-modules:   Data.Parser.Grempa.Auxiliary.Auxiliary
+                   , Data.Parser.Grempa.Auxiliary.MultiMap
                    , Data.Parser.Grempa.Grammar.Levels
                    , Data.Parser.Grempa.Grammar.Token
                    , Data.Parser.Grempa.Grammar.Typed

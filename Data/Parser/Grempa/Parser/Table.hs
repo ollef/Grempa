@@ -13,7 +13,7 @@ import Data.Array
 import Data.Dynamic
 import Language.Haskell.TH.Lift
 
-import Data.Parser.Grempa.Aux.Aux
+import Data.Parser.Grempa.Auxiliary.Auxiliary
 import Data.Parser.Grempa.Grammar.Token
 
 type StateI = Int

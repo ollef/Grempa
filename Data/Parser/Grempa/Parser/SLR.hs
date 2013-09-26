@@ -5,7 +5,7 @@ module Data.Parser.Grempa.Parser.SLR
 import Data.Set(Set)
 import qualified Data.Set as S
 
-import Data.Parser.Grempa.Aux.Aux
+import Data.Parser.Grempa.Auxiliary.Auxiliary
 import Data.Parser.Grempa.Parser.Item
 import Data.Parser.Grempa.Grammar.Token
 import Data.Parser.Grempa.Grammar.Untyped

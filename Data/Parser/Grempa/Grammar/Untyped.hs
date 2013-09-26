@@ -14,9 +14,9 @@ import Data.Map(Map)
 import Data.Set(Set)
 import qualified Data.Set as S
 
-import Data.Parser.Grempa.Aux.Aux
-import qualified Data.Parser.Grempa.Aux.MultiMap as MM
-import Data.Parser.Grempa.Aux.MultiMap(MultiMap)
+import Data.Parser.Grempa.Auxiliary.Auxiliary
+import qualified Data.Parser.Grempa.Auxiliary.MultiMap as MM
+import Data.Parser.Grempa.Auxiliary.MultiMap(MultiMap)
 import Data.Parser.Grempa.Parser.Table
 import Data.Parser.Grempa.Grammar.Token
 import qualified Data.Parser.Grempa.Grammar.Typed as T

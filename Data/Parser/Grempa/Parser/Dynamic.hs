@@ -13,7 +13,7 @@ import Data.Function
 import qualified Data.Map as M
 import Data.Maybe
 
-import Data.Parser.Grempa.Aux.Aux
+import Data.Parser.Grempa.Auxiliary.Auxiliary
 import Data.Parser.Grempa.Parser.Driver
 import Data.Parser.Grempa.Parser.LALR
 import Data.Parser.Grempa.Parser.Result

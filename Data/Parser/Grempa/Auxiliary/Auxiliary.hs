@@ -1,6 +1,6 @@
--- | Auxillary functions for traversing recursive data structures such as
+-- | Auxiliary functions for traversing recursive data structures such as
 --   grammars, and for converting mappings to arrays.
-module Data.Parser.Grempa.Aux.Aux where
+module Data.Parser.Grempa.Auxiliary.Auxiliary where
 import Control.Monad.State
 import Data.Array
 import Data.Map(Map)

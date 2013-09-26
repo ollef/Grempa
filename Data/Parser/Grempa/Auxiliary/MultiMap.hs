@@ -1,6 +1,6 @@
 -- | A Map mapping multiple values to a key (cross between Map and Set).
 --   This is not a complete module.
-module Data.Parser.Grempa.Aux.MultiMap
+module Data.Parser.Grempa.Auxiliary.MultiMap
   ( MultiMap
   , lookup
   , insert
