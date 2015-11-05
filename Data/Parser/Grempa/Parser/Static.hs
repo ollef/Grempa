@@ -137,8 +137,8 @@ instance ToPat a => ToPat [a] where
 -- >     toPat = toConstrPat
 toConstrPat :: (Token t, Lift t) => t -> PatQ
 toConstrPat tok = do
-    let name = mkName $ tyconModule (dataTypeName $ dataTypeOf tok)
-            ++ "." ++ show (toConstr tok)
+    Just name <- lookupValueName $ tyconModule (dataTypeName $ dataTypeOf tok)
+                                   ++ show (toConstr tok)
     info <-reify name
     case info of
         DataConI n t _ _ -> conP n $ replicate (numArgs t) wildP
