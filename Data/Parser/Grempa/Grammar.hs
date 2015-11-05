@@ -44,7 +44,7 @@ module Data.Parser.Grempa.Grammar
 
 import Data.Typeable
 import Data.Parser.Grempa.Grammar.Typed
-    (Grammar, rule, ToSym(..), (<#>), (<#), (<@>), (<@), epsilon)
+    (Grammar, rule, Symbol(..), ToSym(..), (<#>), (<#), (<@>), (<@), epsilon)
 import Data.Parser.Grempa.Grammar.Levels
 
 -- | Create a new rule which consists of 0 or more of the argument symbol.

@@ -7,7 +7,6 @@ module Data.Parser.Grempa.Parser.Static
     , toConstrPat
     ) where
 
-import Control.Applicative
 import Control.Monad
 import Data.Dynamic
 import Data.Data
@@ -65,7 +64,7 @@ staticRT g = do
             (at', ac)   = conflicts at
             driv        = [|driver ($(mkActFun at'), $(mkGotoFun gt), st)|]
         return (driv, ac)
-    forM_ confls $ report False . showConflict
+    forM_ confls $ reportWarning . showConflict
     res
 
 -- | Make a static parser from a grammar.

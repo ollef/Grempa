@@ -1,4 +1,7 @@
 {-# LANGUAGE TemplateHaskell, DeriveDataTypeable #-}
+-- Needed to derive ToSym Tok Tok
+{-# LANGUAGE FlexibleContexts, MultiParamTypeClasses, TypeFamilies #-}
+
 -- A lexer for Example 3. This is a really naive lexer and should not be used
 -- in production. It is merely for showing how the parser works.
 module Ex3FunLex
@@ -10,6 +13,7 @@ import Data.Char
 import Data.Data
 import Language.Haskell.TH.Lift
 import Data.Parser.Grempa.Static
+import Data.Parser.Grempa.Grammar (ToSym(..), Symbol(STerm))
 
 -- | Token datatype
 data Tok
@@ -30,6 +34,10 @@ data Tok
 
 $(deriveLift ''Tok)
 instance ToPat Tok where toPat = toConstrPat
+
+instance ToSym Tok Tok where
+  type ToSymT Tok Tok = Tok
+  toSym = STerm
 
 -- * Shorthands for constructors applied to something
 --   (could be anything since the ToPat instance creates wildcard patterns for

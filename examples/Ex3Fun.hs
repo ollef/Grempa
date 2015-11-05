@@ -1,9 +1,9 @@
 -- | Example 3: A grammar for a small functional language.
 --              This example also includes a naive lexer.
-{-# LANGUAGE DeriveDataTypeable, RecursiveDo #-}
+{-# LANGUAGE DeriveDataTypeable, FlexibleContexts, RecursiveDo #-}
+
 module Ex3Fun (fun, Def) where
 
-import Control.Applicative
 import Data.Data
 
 import Data.Parser.Grempa.Grammar

@@ -5,6 +5,8 @@
 {-# LANGUAGE RecursiveDo #-}
 -- Needed for deriving 'Typeable'.
 {-# LANGUAGE DeriveDataTypeable #-}
+-- Needed for deriving ToSym Char Char
+{-# LANGUAGE MultiParamTypeClasses, TypeFamilies #-}
 
 module Ex1SimpleExpr where
 
@@ -20,6 +22,10 @@ data E = Plus  E E
        | Times E E
        | Var
   deriving (Show, Eq, Typeable)
+
+instance ToSym Char Char where
+    type ToSymT Char Char = Char
+    toSym = STerm
 
 -- | The type of the 'expr' function tells us that it is a grammar for a
 --   language operating on lists of 'Char's returning an 'E' if the parsing
