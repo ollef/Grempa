@@ -10,6 +10,7 @@ Description:
     Haskell, producing fast parsers with no initial runtime overhead, or
     dynamically, which has the initial overhead of generating the parser, but
     can be used for example when the grammar depends on an input.
+Homepage:            https://github.com/ollef/Grempa
 License:             BSD3
 License-file:        LICENSE
 Author:              Olle Fredriksson
