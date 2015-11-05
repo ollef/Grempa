@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE CPP, TemplateHaskell #-}
 {-# OPTIONS_HADDOCK hide #-}
 -- | Make parsers at compile time using Template Haskell
 module Data.Parser.Grempa.Parser.Static
@@ -138,6 +138,9 @@ instance ToPat a => ToPat [a] where
 toConstrPat :: (Token t, Lift t) => t -> PatQ
 toConstrPat tok = do
     Just name <- lookupValueName $ tyconModule (dataTypeName $ dataTypeOf tok)
+#if !MIN_VERSION_template_haskell(2,10,0)
+                                   ++ "."
+#endif
                                    ++ show (toConstr tok)
     info <-reify name
     case info of
