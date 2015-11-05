@@ -11,8 +11,8 @@ import Control.Applicative
 import Control.Monad
 import Data.Dynamic
 import Data.Data
-import Language.Haskell.TH
-import Language.Haskell.TH.Syntax
+import Language.Haskell.TH hiding (unType)
+import Language.Haskell.TH.Syntax hiding (unType)
 
 import Data.Parser.Grempa.Parser.Conflict
 import Data.Parser.Grempa.Parser.Driver
