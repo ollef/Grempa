@@ -31,7 +31,7 @@ Extra-source-files:  README
                    , examples/Ex4StateLex.hs
                    , examples/Ex4StateParser.hs
                    , examples/Ex5Test.hs
-Cabal-version:       >= 1.6
+Cabal-version:       >= 1.10
 Flag test
     Description:
       Build the module for generating random inputs and the expected output for
@@ -66,3 +66,11 @@ Library
     if flag(test)
       Build-Depends:   QuickCheck >= 2.4
       Exposed-modules: Data.Parser.Grempa.Test
+
+Test-Suite grempa-tests
+  Type: exitcode-stdio-1.0
+  Hs-Source-Dirs: examples, .
+  Main-Is: Ex5Test.hs
+  Build-Depends: mtl, array, containers
+  Build-Depends: base, QuickCheck, th-lift, template-haskell
+  GHC-options: -Wall
