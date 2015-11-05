@@ -1,5 +1,5 @@
 -- | Use QuickCheck to test your parsers.
-module Ex4Test where
+module Main where
 
 -- The Grempa library has to be built with the test flag to be able to use this.
 import Data.Parser.Grempa.Test
@@ -23,3 +23,8 @@ import Ex3FunParser(parseFunStatic)
 testEx1 = prop_parser parseExprStatic  expr
 testEx2 = prop_parser parseCalcStatic  calc
 testEx3 = prop_parser parseFunStatic   fun
+
+main = do
+  quickCheck testEx1
+  quickCheck testEx2
+  quickCheck testEx3

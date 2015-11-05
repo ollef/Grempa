@@ -11,6 +11,8 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 -- Needed for deriving 'Lift'.
 {-# LANGUAGE TemplateHaskell #-}
+-- Needed for deriving ToSym CToken CToken
+{-# LANGUAGE MultiParamTypeClasses, TypeFamilies #-}
 
 module Ex2Calculator where
 
@@ -37,6 +39,10 @@ data CToken
   -- 'Ord' and 'Show'). When making a static parser, they also have to be
   -- members of 'Typeable' and also 'Lift' for 'toConstrPat' to work.
   deriving (Data, Eq, Ord, Show, Typeable)
+
+instance ToSym CToken CToken where
+  type ToSymT CToken CToken = CToken
+  toSym = STerm
 
 -- Derive a 'Lift' instance
 $(deriveLift ''CToken)

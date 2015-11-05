@@ -88,9 +88,24 @@ class ToSym t a where
   type ToSymT t a :: *
   toSym :: a -> Symbol t (ToSymT t a)
 
-instance ToSym t t where
-  type ToSymT t t = t
-  toSym = STerm
+-- this instance, which may have worked with ghc-7.8:
+--
+-- instance ToSym t t where
+--   type ToSymT t t = t
+--   toSym = STerm
+--
+-- causes an error in ghc-7.10:
+--
+--    Conflicting family instance declarations:
+--      ToSymT t t -- Defined at Data/Parser/Grempa/Grammar/Typed.hs:94:8
+--      ToSymT t (RId t a) -- Defined at Data/Parser/Grempa/Grammar/Typed.hs:98:8
+--
+-- If a particular ToSym t t instance is required, it should be declared in
+-- the application code, e.g.
+--
+-- instance ToSym Char Char where
+--     type ToSymT Char Char = Char
+--     toSym = STerm
 
 instance ToSym t (RId t a) where
   type ToSymT t (RId t a) = a

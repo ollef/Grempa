@@ -1,4 +1,4 @@
-{-# LANGUAGE TupleSections, RecursiveDo, FlexibleInstances, MultiParamTypeClasses #-}
+{-# LANGUAGE TupleSections, RecursiveDo, FlexibleContexts, FlexibleInstances, MultiParamTypeClasses #-}
 module Data.Parser.Grempa.Parser.LALR
     ( lalr
     ) where

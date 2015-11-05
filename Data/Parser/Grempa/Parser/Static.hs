@@ -1,4 +1,4 @@
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE CPP, TemplateHaskell #-}
 {-# OPTIONS_HADDOCK hide #-}
 -- | Make parsers at compile time using Template Haskell
 module Data.Parser.Grempa.Parser.Static
@@ -11,8 +11,8 @@ import Control.Applicative
 import Control.Monad
 import Data.Dynamic
 import Data.Data
-import Language.Haskell.TH
-import Language.Haskell.TH.Syntax
+import Language.Haskell.TH hiding (unType)
+import Language.Haskell.TH.Syntax hiding (unType)
 
 import Data.Parser.Grempa.Parser.Conflict
 import Data.Parser.Grempa.Parser.Driver
@@ -65,7 +65,7 @@ staticRT g = do
             (at', ac)   = conflicts at
             driv        = [|driver ($(mkActFun at'), $(mkGotoFun gt), st)|]
         return (driv, ac)
-    forM_ confls $ report False . showConflict
+    forM_ confls $ reportWarning . showConflict
     res
 
 -- | Make a static parser from a grammar.
@@ -137,8 +137,11 @@ instance ToPat a => ToPat [a] where
 -- >     toPat = toConstrPat
 toConstrPat :: (Token t, Lift t) => t -> PatQ
 toConstrPat tok = do
-    let name = mkName $ tyconModule (dataTypeName $ dataTypeOf tok)
-            ++ "." ++ show (toConstr tok)
+    Just name <- lookupValueName $ tyconModule (dataTypeName $ dataTypeOf tok)
+#if !MIN_VERSION_template_haskell(2,10,0)
+                                   ++ "."
+#endif
+                                   ++ show (toConstr tok)
     info <-reify name
     case info of
         DataConI n t _ _ -> conP n $ replicate (numArgs t) wildP

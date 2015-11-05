@@ -1,9 +1,11 @@
-{-# LANGUAGE RecursiveDo #-}
+{-# LANGUAGE FlexibleContexts, RecursiveDo, UndecidableInstances #-}
+{-# LANGUAGE FlexibleInstances, GeneralizedNewtypeDeriving, StandaloneDeriving, TypeSynonymInstances #-}
 module Data.Parser.Grempa.Grammar.Levels
     ( levels
     , lrule
     ) where
 
+import Control.Applicative
 import Control.Monad.State
 import Control.Monad.Trans
 import Control.Monad.Fix
@@ -13,7 +15,7 @@ import Data.Parser.Grempa.Grammar.Typed
 
 newtype ReverseT m a = ReverseT { runReverseT :: m a }
 
-instance MonadFix m => Monad (ReverseT m) where
+instance (MonadFix m, Applicative (ReverseT m)) => Monad (ReverseT m) where
     return            = ReverseT . return
     ReverseT m >>= f  =
          ReverseT $ do
@@ -25,10 +27,10 @@ instance MonadFix m => Monad (ReverseT m) where
 instance MonadTrans ReverseT where
     lift = ReverseT
 
-instance MonadFix m => MonadFix (ReverseT m) where
+instance (MonadFix m, Applicative (ReverseT m)) => MonadFix (ReverseT m) where
     mfix f = ReverseT $ mfix (runReverseT . f)
 
-type RStateT s m a = ReverseT (StateT s m) a
+type RStateT s m = ReverseT (StateT s m)
 
 -- | Start a levels block. Usage:
 --
@@ -57,6 +59,9 @@ type RStateT s m a = ReverseT (StateT s m) a
 -- creating grammars with precedence levels.
 levels :: Monad m => RStateT (Maybe a) m r -> m r
 levels = flip evalStateT Nothing . runReverseT
+
+deriving instance Functor (RStateT (Maybe (RId t a)) (GrammarState t))
+deriving instance Applicative (RStateT (Maybe (RId t a)) (GrammarState t))
 
 -- | A rule in a levels block
 lrule :: (Typeable a, Typeable t)
