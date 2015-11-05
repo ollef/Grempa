@@ -5,6 +5,7 @@ module Data.Parser.Grempa.Grammar.Levels
     , lrule
     ) where
 
+import Control.Applicative
 import Control.Monad.State
 import Control.Monad.Trans
 import Control.Monad.Fix
