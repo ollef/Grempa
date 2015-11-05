@@ -43,7 +43,7 @@ Library
                    , base             >= 4.2 && < 5
                    , containers       >= 0.3
                    , mtl              >= 2
-                   , template-haskell >= 2.10
+                   , template-haskell >= 2.4
                    , th-lift          >= 0.5
     Exposed-modules: Data.Parser.Grempa.Grammar
                    , Data.Parser.Grempa.Static
