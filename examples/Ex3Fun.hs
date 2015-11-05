@@ -4,6 +4,7 @@
 
 module Ex3Fun (fun, Def) where
 
+import Control.Applicative
 import Data.Data
 
 import Data.Parser.Grempa.Grammar

@@ -7,6 +7,7 @@ module Data.Parser.Grempa.Parser.Static
     , toConstrPat
     ) where
 
+import Control.Applicative
 import Control.Monad
 import Data.Dynamic
 import Data.Data
