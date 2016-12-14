@@ -144,7 +144,11 @@ toConstrPat tok = do
                                    ++ show (toConstr tok)
     info <-reify name
     case info of
+#if MIN_VERSION_template_haskell(2,11,0)
+        DataConI n t _   -> conP n $ replicate (numArgs t) wildP
+#else
         DataConI n t _ _ -> conP n $ replicate (numArgs t) wildP
+#endif
         x                -> error $ "toConstrPat got " ++ show x
   where
     numArgs (AppT _ t2) = 1 + numArgs t2
